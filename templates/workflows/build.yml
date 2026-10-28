@@ -1,0 +1,38 @@
+# Build the APK and publish it on GitHub Releases (shared logic: android-tools/actions/build).
+# Copy to .github/workflows/build.yml of an app and edit the three APP_ lines.
+#   main push            -> pre-release "dev"
+#   new version in version.properties -> release vX.Y.Z (signed only)
+#   failure              -> log in pre-release "ci-logs"
+name: Build APK
+
+on:
+  push:
+    branches: [ main ]
+    paths-ignore: [ '**.md', 'docs/**' ]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      # Shared tools: always the latest main of <owner>/android-tools (no account name in this file).
+      - uses: actions/checkout@v4
+        with:
+          repository: ${{ github.repository_owner }}/android-tools
+          path: .android-tools
+      - uses: ./.android-tools/actions/build
+        with:
+          app-name: APP_NAME                      # e.g. Launcher (file names / release titles)
+          key-alias: APP_KEY_ALIAS                # alias inside the release keystore
+          keystore-base64: ${{ secrets.APP_KEYSTORE_BASE64 }}
+          keystore-password: ${{ secrets.APP_KEYSTORE_PASSWORD }}

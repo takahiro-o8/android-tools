@@ -1,0 +1,49 @@
+name: Build and release APK
+description: >
+  Builds the release APK and publishes it on GitHub Releases: rolling pre-release "dev" for every
+  main push, "vX.Y.Z" when version.properties has a version with no release yet, and the build log
+  in pre-release "ci-logs" on failure. See docs/BUILD.md.
+
+inputs:
+  app-name:
+    description: Display name used for APK file names and release titles (e.g. "Launcher")
+    required: true
+  module:
+    description: Gradle module of the app
+    default: app
+  key-alias:
+    description: Alias the release keystore must contain; any other keystore is not accepted
+    required: true
+  keystore-base64:
+    description: Release keystore (.jks) as base64 (pass from a secret)
+    default: ''
+  keystore-password:
+    description: Password of the keystore and its key (pass from a secret)
+    default: ''
+  version-file:
+    default: version.properties
+  changelog:
+    default: docs/CHANGELOG.md
+  java-version:
+    default: '21'
+
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-java@v4
+      with:
+        distribution: zulu
+        java-version: ${{ inputs.java-version }}
+    - uses: gradle/actions/setup-gradle@v4
+    - shell: bash
+      run: bash "${{ github.action_path }}/build.sh"
+      env:
+        APP_NAME: ${{ inputs.app-name }}
+        MODULE: ${{ inputs.module }}
+        KEY_ALIAS: ${{ inputs.key-alias }}
+        KEYSTORE_BASE64: ${{ inputs.keystore-base64 }}
+        KEYSTORE_PASSWORD: ${{ inputs.keystore-password }}
+        VERSION_FILE: ${{ inputs.version-file }}
+        CHANGELOG: ${{ inputs.changelog }}
+        EVENT_NAME: ${{ github.event_name }}
+        GH_TOKEN: ${{ github.token }}

@@ -1,0 +1,42 @@
+name: Android E2E test
+description: >
+  Starts a headless Android emulator (KVM), builds the debug APK, runs the app's adb test script
+  (which uses e2e/adbtest.py) and publishes report.md + screenshots to the pre-release
+  "e2e-report". Fails the job when a step fails or the app crashes. See docs/E2E.md.
+
+inputs:
+  app-id:
+    description: Application id of the debug build (e.g. app.example.debug)
+    required: true
+  module:
+    default: app
+  test:
+    description: The app's test script
+    default: e2e/test.py
+  system-image:
+    description: Emulator system image (sdkmanager package)
+    default: system-images;android-37.0;google_apis;x86_64
+  device:
+    description: avdmanager device profile
+    default: pixel_6
+  java-version:
+    default: '21'
+
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-java@v4
+      with:
+        distribution: zulu
+        java-version: ${{ inputs.java-version }}
+    - uses: gradle/actions/setup-gradle@v4
+    - shell: bash
+      run: bash "${{ github.action_path }}/e2e.sh"
+      env:
+        APP_ID: ${{ inputs.app-id }}
+        MODULE: ${{ inputs.module }}
+        TEST: ${{ inputs.test }}
+        IMAGE: ${{ inputs.system-image }}
+        DEVICE: ${{ inputs.device }}
+        LIB: ${{ github.action_path }}/../../e2e
+        GH_TOKEN: ${{ github.token }}

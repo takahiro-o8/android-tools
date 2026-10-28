@@ -1,0 +1,33 @@
+# End-to-end test on an Android emulator (shared logic: android-tools/actions/e2e).
+# Runs only when asked: the "Run workflow" button, or a push whose commit message contains [e2e].
+# Result: pre-release "e2e-report" (report.md + screenshots). Copy to .github/workflows/e2e.yml
+# of an app and set app-id to the debug application id.
+name: E2E
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: e2e
+  cancel-in-progress: true
+
+jobs:
+  e2e:
+    if: github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[e2e]')
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: ${{ github.repository_owner }}/android-tools
+          path: .android-tools
+      - uses: ./.android-tools/actions/e2e
+        with:
+          app-id: APP_ID.debug                    # debug application id
+          test: e2e/test.py
