@@ -27,10 +27,17 @@ echo "::group::Install emulator and $IMAGE"
 timeout 900 "$BIN/sdkmanager" --install emulator platform-tools "$IMAGE" > sdk.log 2>&1 || { cat sdk.log; die "sdkmanager could not install $IMAGE"; }
 echo "::endgroup::"
 export PATH="$SDK/platform-tools:$SDK/emulator:$PATH"
+# Fix the AVD location: avdmanager and the emulator otherwise disagree on newer runner images.
+export ANDROID_AVD_HOME="$HOME/.android/avd"
+mkdir -p "$ANDROID_AVD_HOME"
 echo no | "$BIN/avdmanager" create avd -n e2e -k "$IMAGE" -d "$DEVICE" --force >/dev/null || die "avdmanager failed"
-printf 'hw.ramSize=4096\ndisk.dataPartition.size=6G\nhw.keyboard=yes\n' >> "$HOME/.android/avd/e2e.avd/config.ini"
+[ -f "$ANDROID_AVD_HOME/e2e.avd/config.ini" ] || die "AVD was not created in $ANDROID_AVD_HOME ($(emulator -list-avds 2>&1 | tr '\n' ' '))"
+printf 'hw.ramSize=4096\ndisk.dataPartition.size=6G\nhw.keyboard=yes\n' >> "$ANDROID_AVD_HOME/e2e.avd/config.ini"
 emulator -avd e2e -no-window -no-audio -no-boot-anim -no-snapshot -gpu swiftshader_indirect \
   -camera-back none -camera-front none > emulator.log 2>&1 &
+emu=$!
+sleep 15
+kill -0 "$emu" 2>/dev/null || { cat emulator.log; cp emulator.log "$OUT/emulator-log.txt"; die "Emulator exited right after start"; }
 
 # --- build the debug APK while the emulator boots
 echo "Building debug APK"
