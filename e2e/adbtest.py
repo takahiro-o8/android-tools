@@ -220,8 +220,17 @@ def run_as_json(path, default=None):
 def install(home_role=False, widget_bind=False, permissions=(), animations=0.5):
     """Install the APK and prepare the device. Call from main(setup=...)."""
     adb("wait-for-device", timeout=300)
+    # boot_completed comes before the package service is ready: wait, then retry the install.
+    wait_for(lambda: "package:" in sh("pm path android"), timeout=180, interval=5)
     if APK:
-        adb("install", "-r", "-t", "-g", APK, check=True, timeout=300)
+        for attempt in range(5):
+            try:
+                adb("install", "-r", "-t", "-g", APK, check=True, timeout=300)
+                break
+            except RuntimeError:
+                if attempt == 4:
+                    raise
+                time.sleep(15)
     if home_role:
         sh(f"cmd role add-role-holder --user 0 android.app.role.HOME {PKG}")
     if widget_bind:
@@ -309,7 +318,12 @@ def main(setup=install):
     os.makedirs(OUT, exist_ok=True)
     if not PKG:
         sys.exit("E2E_PACKAGE is not set")
-    setup()
+    try:
+        setup()
+    except Exception as e:  # noqa: BLE001
+        _results.append(("準備(インストール・端末設定)", False, f"{e}\n{traceback.format_exc(limit=3)}", shot("00")))
+        _report([])
+        sys.exit(1)
     for i, (title, fn) in enumerate(_steps, 1):
         _run_step(i, title, fn)
         _report([])
