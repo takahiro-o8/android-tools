@@ -19,6 +19,9 @@ inputs:
   device:
     description: avdmanager device profile
     default: pixel_6
+  gpu:
+    description: Emulator -gpu mode (swiftshader_indirect crashed surfaceflinger on API 37)
+    default: swangle_indirect
   java-version:
     default: '21'
 
@@ -38,5 +41,6 @@ runs:
         TEST: ${{ inputs.test }}
         IMAGE: ${{ inputs.system-image }}
         DEVICE: ${{ inputs.device }}
+        GPU: ${{ inputs.gpu }}
         LIB: ${{ github.action_path }}/../../e2e
         GH_TOKEN: ${{ github.token }}

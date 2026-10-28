@@ -1,5 +1,9 @@
 # 作業記録
 
+## 2026-10-28 4 回目: 画面の取得ができず全手順失敗 → 修正
+- 原因: `-gpu swiftshader_indirect` で screencap と surfaceflinger が `hasReadColorBufferDma` のアサーションで異常終了(API 37 + emulator 37.2)。uiautomator dump も失敗
+- 対処: 既定を `-gpu swangle_indirect` に(入力 `gpu` で変更可)。起動後に画面取得を確認し、だめならテストを始めずに理由を報告。uiautomator の失敗理由をレポートに出す
+
 ## 2026-10-28 3 回目: インストールが「Broken pipe」で失敗 → 修正
 - 原因: 起動完了直後はパッケージサービスが未準備
 - 対処: `pm path android` が返るまで待ち、インストールを最大 5 回再試行。準備で失敗してもレポートに「準備」の失敗として出す

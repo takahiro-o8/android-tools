@@ -38,7 +38,7 @@ mkdir -p "$ANDROID_AVD_HOME"
 echo no | "$BIN/avdmanager" create avd -n e2e -k "$IMAGE" -d "$DEVICE" --force >/dev/null || die "avdmanager failed"
 [ -f "$ANDROID_AVD_HOME/e2e.avd/config.ini" ] || die "AVD was not created in $ANDROID_AVD_HOME ($(emulator -list-avds 2>&1 | tr '\n' ' '))"
 printf 'hw.ramSize=4096\ndisk.dataPartition.size=2G\nhw.keyboard=yes\nhw.cpu.ncore=2\n' >> "$ANDROID_AVD_HOME/e2e.avd/config.ini"
-emulator -avd e2e -no-metrics -no-window -no-audio -no-boot-anim -no-snapshot -gpu swiftshader_indirect \
+emulator -avd e2e -no-metrics -no-window -no-audio -no-boot-anim -no-snapshot -gpu "${GPU:-swangle_indirect}" \
   -camera-back none -camera-front none > emulator.log 2>&1 &
 emu=$!
 sleep 15
@@ -59,6 +59,11 @@ done
 [ "$(timeout 30 adb shell getprop sys.boot_completed | tr -d '\r')" = 1 ] || { tail -80 emulator.log; cp emulator.log "$OUT/emulator-log.txt"; die "Emulator did not boot"; }
 echo "::endgroup::"
 sleep 10
+# The screen must be readable, otherwise every step fails (seen: GPU mode crashing surfaceflinger).
+timeout 60 adb exec-out screencap -p > "$OUT/boot.png" 2>/dev/null
+[ "$(stat -c%s "$OUT/boot.png" 2>/dev/null || echo 0)" -gt 10000 ] || {
+  adb logcat -d -b crash > "$OUT/crash.txt" 2>/dev/null; tail -80 emulator.log; cp emulator.log "$OUT/emulator-log.txt"
+  die "Screen capture does not work on this emulator (GPU mode ${GPU:-swangle_indirect})"; }
 
 # --- run the app's test script
 # Hard limit so a hang still publishes a (partial) report before the job timeout.

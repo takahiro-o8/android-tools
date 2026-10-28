@@ -73,14 +73,15 @@ def shot(name):
 
 def nodes():
     """Every view on screen (uiautomator dump): dicts with text, desc, cls, pkg, id, l/t/r/b, cx/cy."""
+    out = ""
     for _ in range(6):
-        out = sh("uiautomator dump /sdcard/ui.xml >/dev/null 2>&1; cat /sdcard/ui.xml")
+        out = sh("rm -f /sdcard/ui.xml; uiautomator dump /sdcard/ui.xml 2>&1; cat /sdcard/ui.xml 2>/dev/null")
         if "<hierarchy" in out:
             out = out[out.index("<"):]
             break
         time.sleep(1)  # "could not get idle state" while animating
     else:
-        raise RuntimeError("uiautomator dump failed")
+        raise RuntimeError("uiautomator dump failed: " + " ".join(out.split())[:200])
     res = []
     for n in ET.fromstring(out).iter("node"):
         l, t, r, b = map(int, re.findall(r"-?\d+", n.get("bounds", "[0,0][0,0]")))
