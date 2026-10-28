@@ -1,5 +1,8 @@
 # 作業記録
 
+## 2026-10-28 7 回目: 「KVM is not available」→ 修正
+- それまでの実行では KVM が使えていたので、udev の権限反映待ちの競合とみて `udevadm settle` と `chmod 666 /dev/kvm` を追加。失敗時は /dev/kvm の状態と CPU の仮想化対応数をレポートに出す
+
 ## 2026-10-28 6 回目: どの描画方式でも同じ異常終了 → Android 16 に変更
 - `-feature -ReadColorBufferDma` は「Bad feature name」で無効。guest / swangle / swiftshader とも同じアサーション
 - オーナー判断で既定イメージを Android 16(API 36)に(ADR-0002)。描画方式は swiftshader_indirect から順に試す

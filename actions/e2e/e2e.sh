@@ -18,7 +18,9 @@ die() { echo "::error::$1"; publish "$1"; exit 1; }
 # --- emulator (KVM is required; never run the slow non-accelerated emulator)
 echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules >/dev/null
 sudo udevadm control --reload-rules && sudo udevadm trigger --name-match=kvm
-[ -w /dev/kvm ] || die "KVM is not available on this runner"
+sudo udevadm settle --timeout=30 || true
+[ -e /dev/kvm ] && [ ! -w /dev/kvm ] && sudo chmod 666 /dev/kvm
+[ -w /dev/kvm ] || die "KVM is not available on this runner ($(ls -l /dev/kvm 2>&1); $(grep -cE 'vmx|svm' /proc/cpuinfo) CPUs with virtualization)"
 
 # Free disk space on the runner (preinstalled toolchains this job never uses).
 sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/.ghcup /usr/local/share/boost /usr/share/swift \
