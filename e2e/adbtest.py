@@ -161,25 +161,29 @@ def long_press(x, y, hold=1.2):
     up(x, y)
 
 
-def drag(x1, y1, x2, y2, hold=1.2, steps=8, before_up=None, settle=1.2):
+def drag(x1, y1, x2, y2, hold=1.0, steps=10, before_up=None, settle=1.2, method="motion", mid_shot=None):
     """Long press at (x1,y1), move to (x2,y2) and release.
-    Without [before_up] this uses `input draganddrop` (one consistent touch stream from the
-    system). [before_up] switches to step-by-step motion events: it is called before releasing
-    and may return a new end point (e.g. a target that only appears during the drag)."""
-    if before_up is None:
+    method="motion" (default): DOWN, hold [hold] s, then MOVE steps and UP, all in one device shell
+    so timing is exact. [mid_shot] saves a screenshot just before releasing.
+    method="dnd": `input draganddrop` (moves right at the long-press timeout; can race with
+    the app's own swipe gestures).
+    [before_up] (motion only) is called before releasing and may return a new end point, e.g. a
+    target that only appears during the drag."""
+    if method == "dnd":
         sh(f"input draganddrop {int(x1)} {int(y1)} {int(x2)} {int(y2)} 1500")
         time.sleep(settle)
         return
-    down(x1, y1)
-    time.sleep(hold)
-    for i in range(1, steps + 1):
-        move(x1 + (x2 - x1) * i / steps, y1 + (y2 - y1) * i / steps)
+    moves = "; ".join(f"input motionevent MOVE {int(x1 + (x2 - x1) * i / steps)} {int(y1 + (y2 - y1) * i / steps)}"
+                      for i in range(1, steps + 1))
+    sh(f"input motionevent DOWN {int(x1)} {int(y1)}; sleep {hold}; {moves}; sleep 0.3")
+    if mid_shot:
+        shot(mid_shot)
     if before_up:
         p = before_up()
         if p:
             x2, y2 = p
             move(x2, y2)
-    time.sleep(0.4)
+            time.sleep(0.3)
     up(x2, y2)
     time.sleep(settle)
 
