@@ -163,8 +163,13 @@ def long_press(x, y, hold=1.2):
 
 def drag(x1, y1, x2, y2, hold=1.2, steps=8, before_up=None, settle=1.2):
     """Long press at (x1,y1), move to (x2,y2) and release.
-    [before_up] is called before releasing and may return a new end point (e.g. a target that
-    only appears during the drag)."""
+    Without [before_up] this uses `input draganddrop` (one consistent touch stream from the
+    system). [before_up] switches to step-by-step motion events: it is called before releasing
+    and may return a new end point (e.g. a target that only appears during the drag)."""
+    if before_up is None:
+        sh(f"input draganddrop {int(x1)} {int(y1)} {int(x2)} {int(y2)} 1500")
+        time.sleep(settle)
+        return
     down(x1, y1)
     time.sleep(hold)
     for i in range(1, steps + 1):
