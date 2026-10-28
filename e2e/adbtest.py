@@ -227,7 +227,7 @@ def run_as_json(path, default=None):
 
 # ------------------------------------------------------------------ setup
 
-def install(home_role=False, widget_bind=False, permissions=(), animations=0.5):
+def install(home_role=False, widget_bind=False, permissions=(), animations=0.5, show_touches=True):
     """Install the APK and prepare the device. Call from main(setup=...)."""
     adb("wait-for-device", timeout=300)
     # boot_completed comes before the package service is ready: wait, then retry the install.
@@ -249,6 +249,9 @@ def install(home_role=False, widget_bind=False, permissions=(), animations=0.5):
         sh(f"pm grant {PKG} {p}")
     for k in ("window_animation_scale", "transition_animation_scale", "animator_duration_scale"):
         sh(f"settings put global {k} {animations}")
+    if show_touches:  # touch points and the pointer trail appear in every screenshot
+        sh("settings put system show_touches 1")
+        sh("settings put system pointer_location 1")
     set_rotation(0)
     sh("input keyevent KEYCODE_WAKEUP")
     sh("wm dismiss-keyguard")

@@ -51,7 +51,7 @@ if __name__ == "__main__":
   - 画面: `nodes()`, `find(desc=, text=, contains=, cls=)`, `find_all(...)`, `size()`, `wait_for(fn)`, `focused()`, `shot(name)`
   - 操作: `tap`, `long_press`, `drag(x1,y1,x2,y2, before_up=)`, `swipe`, `down/move/up`, `home`, `back`, `set_rotation(0〜3)`
   - データ: `run_as_cat(path)`, `run_as_json(path)`(アプリのデータディレクトリからの相対パス)
-  - 準備: `install(home_role=, widget_bind=, permissions=())`
+  - 準備: `install(home_role=, widget_bind=, permissions=(), show_touches=True)`(既定でタッチ位置と軌跡を画面に表示し、スクリーンショットで操作位置を確認できる)
   - 判定: `check(cond, "失敗時の説明")`
 - 環境変数: `E2E_PACKAGE`(対象のアプリ ID)、`E2E_OUT`(出力先)、`E2E_APK`
 
