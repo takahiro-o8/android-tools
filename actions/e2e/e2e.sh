@@ -38,9 +38,10 @@ mkdir -p "$ANDROID_AVD_HOME"
 echo no | "$BIN/avdmanager" create avd -n e2e -k "$IMAGE" -d "$DEVICE" --force >/dev/null || die "avdmanager failed"
 [ -f "$ANDROID_AVD_HOME/e2e.avd/config.ini" ] || die "AVD was not created in $ANDROID_AVD_HOME ($(emulator -list-avds 2>&1 | tr '\n' ' '))"
 printf 'hw.ramSize=4096\ndisk.dataPartition.size=2G\nhw.keyboard=yes\nhw.cpu.ncore=2\n' >> "$ANDROID_AVD_HOME/e2e.avd/config.ini"
-# GPU setups to try in order until the screen can be captured. On API 37 the host feature
-# ReadColorBufferDma makes screencap and surfaceflinger abort, so it is turned off first.
-MODES=("${GPU:-swangle_indirect}|-feature -ReadColorBufferDma" "guest|-feature -ReadColorBufferDma" "swiftshader_indirect|")
+# GPU modes to try in order until the screen can be captured (docs/E2E.md: API 37 images abort
+# in screencap/surfaceflinger with emulator 37.2 in every mode, so the default is API 36).
+MODES=("${GPU:-swiftshader_indirect}|")
+for m in swiftshader_indirect swangle_indirect guest; do [ "$m" = "${GPU:-swiftshader_indirect}" ] || MODES+=("$m|"); done
 
 start_emulator() {  # $1 = gpu mode, $2 = extra flags
   adb emu kill >/dev/null 2>&1; sleep 3; pkill -f qemu-system >/dev/null 2>&1; sleep 2

@@ -1,5 +1,9 @@
 # 作業記録
 
+## 2026-10-28 6 回目: どの描画方式でも同じ異常終了 → Android 16 に変更
+- `-feature -ReadColorBufferDma` は「Bad feature name」で無効。guest / swangle / swiftshader とも同じアサーション
+- オーナー判断で既定イメージを Android 16(API 36)に(ADR-0002)。描画方式は swiftshader_indirect から順に試す
+
 ## 2026-10-28 5 回目: swangle_indirect でも同じ異常終了 → 修正
 - 原因はホスト側の機能 ReadColorBufferDma(GPU モードではない)。ゲスト(API 37)の mapper がこの機能を想定しておらず assert で落ちる
 - 対処: `-feature -ReadColorBufferDma` で無効化して起動。画面が取れなければ `-gpu guest`、次に `swiftshader_indirect` で再起動して試す。使ったモードは `emulator-mode.txt` に残す

@@ -15,13 +15,13 @@ inputs:
     default: e2e/test.py
   system-image:
     description: Emulator system image (sdkmanager package)
-    default: system-images;android-37.0;google_apis;x86_64
+    default: system-images;android-36;google_apis;x86_64
   device:
     description: avdmanager device profile
     default: pixel_6
   gpu:
-    description: First emulator -gpu mode to try (falls back to guest, then swiftshader_indirect)
-    default: swangle_indirect
+    description: First emulator -gpu mode to try (falls back to swangle_indirect, then guest)
+    default: swiftshader_indirect
   java-version:
     default: '21'
 

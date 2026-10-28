@@ -21,7 +21,9 @@ gh api -H "Accept: application/octet-stream" repos/<owner>/<repo>/releases/asset
 テストが失敗するとワークフローも失敗になります。
 
 ## 既定の環境
-- 端末: `pixel_6`、イメージ `system-images;android-37.0;google_apis;x86_64`(Android 17)。`system-image` 入力で変更可
+- 端末: `pixel_6`、イメージ `system-images;android-36;google_apis;x86_64`(Android 16)。`system-image` 入力で変更可
+  - Android 17(API 37)は 2026-10 時点のエミュレーター 37.2 と組み合わせると画面取得(screencap)と surfaceflinger が `hasReadColorBufferDma` のアサーションで落ち、どの描画方式でも動かないため既定から外した(オーナー判断)。新しいエミュレーターで直ったら戻す
+- 描画方式は `swiftshader_indirect` → `swangle_indirect` → `guest` の順に、画面が撮れるまで試す(使った方式は `emulator-mode.txt`)
 - 検証対象は **デバッグビルド**(`:app:assembleDebug`)。`run-as` でアプリの保存データを読めるため
 - アニメーションは 0.5 倍、画面の自動回転は OFF(回転は `set_rotation()` で指定)
 

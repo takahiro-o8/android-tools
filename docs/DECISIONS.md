@@ -6,6 +6,11 @@
 - 方式: 再利用ワークフロー(`uses: owner/repo/...@main`)ではなく **composite action** を `actions/checkout` で `${{ github.repository_owner }}/android-tools` から取得して使う。呼び出し側にアカウント名(個人名)を書かずに済むため
 - 外部ライブラリなし: E2E は Python 標準ライブラリ + adb + uiautomator dump。ビルドは公式の setup-java / setup-gradle のみ
 - 実行タイミング: E2E は手動ボタンか、コミットメッセージに `[e2e]`(AI セッションは Actions API が 403 のため)
-- 端末: Android 17(API 37)、KVM 必須(仮想化なしのエミュレーターは使わない — オーナー指示)
+- 端末: Android 17(API 37)→ ADR-0002 で Android 16 に変更。KVM 必須(仮想化なしのエミュレーターは使わない — オーナー指示)
 - 結果: プレリリース `e2e-report` に report.md と画像(AI は Releases API で読める)
 - 影響: android-tools の `main` を壊すと全アプリが止まる。変更後は launcher で確認する
+
+## ADR-0002 E2E の端末を Android 16(API 36)にする(2026-10-28)
+- Android 17(API 37)のイメージは、エミュレーター 37.2 では screencap と surfaceflinger が `Assertion failed: !rcEnc->featureInfo()->hasReadColorBufferDma` で異常終了する。swiftshader_indirect / swangle_indirect / guest のどれでも同じ(機能を無効にするフラグも存在しない)
+- オーナー判断: Android 16 に変更(選択肢: 17 を試してだめなら 16/16 に変更/17 で粘る)
+- 新しいエミュレーターで直ったら `system-image` を戻す
