@@ -42,8 +42,11 @@ _steps = []
 
 # ------------------------------------------------------------------ adb
 
-def adb(*args, check=False):
-    r = subprocess.run(["adb", *args], capture_output=True, text=True)
+def adb(*args, check=False, timeout=90):
+    try:
+        r = subprocess.run(["adb", *args], capture_output=True, text=True, timeout=timeout)
+    except subprocess.TimeoutExpired:
+        raise RuntimeError(f"adb {' '.join(args)[:80]} timed out after {timeout}s")
     if check and r.returncode != 0:
         raise RuntimeError(f"adb {' '.join(args)} failed: {(r.stderr or r.stdout).strip()}")
     return r.stdout
@@ -59,7 +62,10 @@ def shot(name):
     os.makedirs(OUT, exist_ok=True)
     path = os.path.join(OUT, f"{name}.png")
     with open(path, "wb") as f:
-        f.write(subprocess.run(["adb", "exec-out", "screencap", "-p"], capture_output=True).stdout)
+        try:
+            f.write(subprocess.run(["adb", "exec-out", "screencap", "-p"], capture_output=True, timeout=60).stdout)
+        except subprocess.TimeoutExpired:
+            pass
     return os.path.basename(path)
 
 
@@ -213,9 +219,9 @@ def run_as_json(path, default=None):
 
 def install(home_role=False, widget_bind=False, permissions=(), animations=0.5):
     """Install the APK and prepare the device. Call from main(setup=...)."""
-    adb("wait-for-device")
+    adb("wait-for-device", timeout=300)
     if APK:
-        adb("install", "-r", "-t", "-g", APK, check=True)
+        adb("install", "-r", "-t", "-g", APK, check=True, timeout=300)
     if home_role:
         sh(f"cmd role add-role-holder --user 0 android.app.role.HOME {PKG}")
     if widget_bind:
@@ -251,6 +257,7 @@ def step(title):
 
 
 def _run_step(i, title, fn):
+    print(f"--- {i:02d} {title}", flush=True)
     try:
         detail, ok = fn() or "", True
     except Exception as e:  # noqa: BLE001
@@ -261,7 +268,10 @@ def _run_step(i, title, fn):
 
 
 def _crashes():
-    log = adb("logcat", "-d", "-b", "crash")
+    try:
+        log = adb("logcat", "-d", "-b", "crash")
+    except RuntimeError:
+        return []
     with open(os.path.join(OUT, "crash.txt"), "w") as f:
         f.write(log)
     return [b for b in log.split("FATAL EXCEPTION")[1:] if PKG and PKG in b]
@@ -269,7 +279,11 @@ def _crashes():
 
 def _report(crashes):
     passed = sum(1 for r in _results if r[1])
-    prop = lambda k: sh(f"getprop {k}").strip()  # noqa: E731
+    def prop(k):
+        try:
+            return sh(f"getprop {k}").strip()
+        except RuntimeError:
+            return "?"
     lines = ["# E2E レポート", "",
              f"- アプリ: {PKG}",
              f"- 端末: {prop('ro.product.model')} / Android {prop('ro.build.version.release')} (API {prop('ro.build.version.sdk')})",
@@ -298,6 +312,7 @@ def main(setup=install):
     setup()
     for i, (title, fn) in enumerate(_steps, 1):
         _run_step(i, title, fn)
+        _report([])
     crashes = _crashes()
     _report(crashes)
     sys.exit(0 if all(r[1] for r in _results) and not crashes else 1)
