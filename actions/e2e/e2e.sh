@@ -20,6 +20,11 @@ echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sud
 sudo udevadm control --reload-rules && sudo udevadm trigger --name-match=kvm
 [ -w /dev/kvm ] || die "KVM is not available on this runner"
 
+# Free disk space on the runner (preinstalled toolchains this job never uses).
+sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/.ghcup /usr/local/share/boost /usr/share/swift \
+  /usr/local/lib/node_modules /opt/hostedtoolcache/CodeQL 2>/dev/null || true
+echo "Free disk: $(df -h "$HOME" | awk 'NR==2{print $4}')"
+
 SDK="${ANDROID_HOME:-$ANDROID_SDK_ROOT}"
 BIN="$SDK/cmdline-tools/latest/bin"
 yes | "$BIN/sdkmanager" --licenses >/dev/null 2>&1
@@ -32,8 +37,8 @@ export ANDROID_AVD_HOME="$HOME/.android/avd"
 mkdir -p "$ANDROID_AVD_HOME"
 echo no | "$BIN/avdmanager" create avd -n e2e -k "$IMAGE" -d "$DEVICE" --force >/dev/null || die "avdmanager failed"
 [ -f "$ANDROID_AVD_HOME/e2e.avd/config.ini" ] || die "AVD was not created in $ANDROID_AVD_HOME ($(emulator -list-avds 2>&1 | tr '\n' ' '))"
-printf 'hw.ramSize=4096\ndisk.dataPartition.size=6G\nhw.keyboard=yes\n' >> "$ANDROID_AVD_HOME/e2e.avd/config.ini"
-emulator -avd e2e -no-window -no-audio -no-boot-anim -no-snapshot -gpu swiftshader_indirect \
+printf 'hw.ramSize=4096\ndisk.dataPartition.size=2G\nhw.keyboard=yes\nhw.cpu.ncore=2\n' >> "$ANDROID_AVD_HOME/e2e.avd/config.ini"
+emulator -avd e2e -no-metrics -no-window -no-audio -no-boot-anim -no-snapshot -gpu swiftshader_indirect \
   -camera-back none -camera-front none > emulator.log 2>&1 &
 emu=$!
 sleep 15
