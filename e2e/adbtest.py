@@ -106,7 +106,7 @@ def find_all(desc=None, text=None, contains=None, cls=None, ns=None):
             continue
         if text is not None and n["text"] != text:
             continue
-        if cls is not None and not n["cls"].endswith(cls):
+        if cls is not None and not (n["cls"] == cls or n["cls"].endswith("." + cls)):
             continue
         if contains is not None and contains.lower() not in (n["text"] + " " + n["desc"]).lower():
             continue

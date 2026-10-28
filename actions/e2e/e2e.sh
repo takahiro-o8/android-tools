@@ -8,7 +8,8 @@ publish() {  # replace the "e2e-report" pre-release with this run's report and s
   [ -f "$OUT/report.md" ] || printf '# E2E レポート\n\n**テストを実行できませんでした:** %s\n' "$1" > "$OUT/report.md"
   cp e2e.log "$OUT/e2e-log.txt" 2>/dev/null || true
   shopt -s nullglob
-  files=("$OUT"/*.md "$OUT"/*.png "$OUT"/*.txt)
+  files=()
+  for f in "$OUT"/*.md "$OUT"/*.png "$OUT"/*.txt; do [ -s "$f" ] && files+=("$f"); done  # empty files make the upload fail
   gh release delete e2e-report --yes --cleanup-tag 2>/dev/null || true
   gh release create e2e-report --prerelease --target "$GITHUB_SHA" \
     --title "E2E レポート (${GITHUB_SHA::7})" --notes-file "$OUT/report.md" "${files[@]}"
