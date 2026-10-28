@@ -20,7 +20,7 @@ inputs:
     description: avdmanager device profile
     default: pixel_6
   gpu:
-    description: Emulator -gpu mode (swiftshader_indirect crashed surfaceflinger on API 37)
+    description: First emulator -gpu mode to try (falls back to guest, then swiftshader_indirect)
     default: swangle_indirect
   java-version:
     default: '21'

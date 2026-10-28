@@ -1,5 +1,9 @@
 # 作業記録
 
+## 2026-10-28 5 回目: swangle_indirect でも同じ異常終了 → 修正
+- 原因はホスト側の機能 ReadColorBufferDma(GPU モードではない)。ゲスト(API 37)の mapper がこの機能を想定しておらず assert で落ちる
+- 対処: `-feature -ReadColorBufferDma` で無効化して起動。画面が取れなければ `-gpu guest`、次に `swiftshader_indirect` で再起動して試す。使ったモードは `emulator-mode.txt` に残す
+
 ## 2026-10-28 4 回目: 画面の取得ができず全手順失敗 → 修正
 - 原因: `-gpu swiftshader_indirect` で screencap と surfaceflinger が `hasReadColorBufferDma` のアサーションで異常終了(API 37 + emulator 37.2)。uiautomator dump も失敗
 - 対処: 既定を `-gpu swangle_indirect` に(入力 `gpu` で変更可)。起動後に画面取得を確認し、だめならテストを始めずに理由を報告。uiautomator の失敗理由をレポートに出す

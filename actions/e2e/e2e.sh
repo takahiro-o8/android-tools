@@ -38,11 +38,36 @@ mkdir -p "$ANDROID_AVD_HOME"
 echo no | "$BIN/avdmanager" create avd -n e2e -k "$IMAGE" -d "$DEVICE" --force >/dev/null || die "avdmanager failed"
 [ -f "$ANDROID_AVD_HOME/e2e.avd/config.ini" ] || die "AVD was not created in $ANDROID_AVD_HOME ($(emulator -list-avds 2>&1 | tr '\n' ' '))"
 printf 'hw.ramSize=4096\ndisk.dataPartition.size=2G\nhw.keyboard=yes\nhw.cpu.ncore=2\n' >> "$ANDROID_AVD_HOME/e2e.avd/config.ini"
-emulator -avd e2e -no-metrics -no-window -no-audio -no-boot-anim -no-snapshot -gpu "${GPU:-swangle_indirect}" \
-  -camera-back none -camera-front none > emulator.log 2>&1 &
-emu=$!
-sleep 15
-kill -0 "$emu" 2>/dev/null || { cat emulator.log; cp emulator.log "$OUT/emulator-log.txt"; die "Emulator exited right after start"; }
+# GPU setups to try in order until the screen can be captured. On API 37 the host feature
+# ReadColorBufferDma makes screencap and surfaceflinger abort, so it is turned off first.
+MODES=("${GPU:-swangle_indirect}|-feature -ReadColorBufferDma" "guest|-feature -ReadColorBufferDma" "swiftshader_indirect|")
+
+start_emulator() {  # $1 = gpu mode, $2 = extra flags
+  adb emu kill >/dev/null 2>&1; sleep 3; pkill -f qemu-system >/dev/null 2>&1; sleep 2
+  echo "Starting emulator: -gpu $1 $2"
+  # shellcheck disable=SC2086
+  emulator -avd e2e -no-metrics -no-window -no-audio -no-boot-anim -no-snapshot -wipe-data -gpu "$1" $2 \
+    -camera-back none -camera-front none > emulator.log 2>&1 &
+  emu=$!
+  sleep 15
+  kill -0 "$emu" 2>/dev/null || { cat emulator.log; cp emulator.log "$OUT/emulator-log.txt"; die "Emulator exited right after start"; }
+}
+
+wait_boot() {
+  timeout 300 adb wait-for-device || return 1
+  for _ in $(seq 1 120); do
+    [ "$(timeout 20 adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')" = 1 ] && { sleep 15; return 0; }
+    sleep 5
+  done
+  return 1
+}
+
+screen_ok() {  # screencap must work, otherwise every step fails
+  timeout 60 adb exec-out screencap -p > "$OUT/boot.png" 2>/dev/null
+  [ "$(stat -c%s "$OUT/boot.png" 2>/dev/null || echo 0)" -gt 10000 ]
+}
+
+start_emulator "${MODES[0]%%|*}" "${MODES[0]#*|}"
 
 # --- build the debug APK while the emulator boots
 echo "Building debug APK"
@@ -50,20 +75,20 @@ timeout 1200 ./gradlew ":$MODULE:assembleDebug" --stacktrace > build.log 2>&1 ||
 apk=$(find "$MODULE/build/outputs/apk/debug" -name '*.apk' | head -1)
 [ -n "$apk" ] || die "No debug APK"
 
-echo "::group::Boot emulator"
-timeout 300 adb wait-for-device || { tail -80 emulator.log; cp emulator.log "$OUT/emulator-log.txt"; die "Emulator did not start"; }
-for i in $(seq 1 120); do
-  [ "$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')" = 1 ] && break
-  sleep 5
+ok=""
+for i in "${!MODES[@]}"; do
+  mode="${MODES[$i]%%|*}"; extra="${MODES[$i]#*|}"
+  [ "$i" -gt 0 ] && start_emulator "$mode" "$extra"
+  echo "::group::Boot emulator (-gpu $mode $extra)"
+  if wait_boot && screen_ok; then ok="-gpu $mode $extra"; echo "::endgroup::"; break; fi
+  echo "::endgroup::"
+  echo "::warning::Screen not usable with -gpu $mode $extra"
+  adb logcat -d -b crash > "$OUT/crash-$mode.txt" 2>/dev/null
+  cp emulator.log "$OUT/emulator-log-$mode.txt"
 done
-[ "$(timeout 30 adb shell getprop sys.boot_completed | tr -d '\r')" = 1 ] || { tail -80 emulator.log; cp emulator.log "$OUT/emulator-log.txt"; die "Emulator did not boot"; }
-echo "::endgroup::"
-sleep 10
-# The screen must be readable, otherwise every step fails (seen: GPU mode crashing surfaceflinger).
-timeout 60 adb exec-out screencap -p > "$OUT/boot.png" 2>/dev/null
-[ "$(stat -c%s "$OUT/boot.png" 2>/dev/null || echo 0)" -gt 10000 ] || {
-  adb logcat -d -b crash > "$OUT/crash.txt" 2>/dev/null; tail -80 emulator.log; cp emulator.log "$OUT/emulator-log.txt"
-  die "Screen capture does not work on this emulator (GPU mode ${GPU:-swangle_indirect})"; }
+[ -n "$ok" ] || die "Screen capture does not work with any GPU mode (${MODES[*]})"
+echo "Using emulator $ok"
+echo "$ok" > "$OUT/emulator-mode.txt"
 
 # --- run the app's test script
 # Hard limit so a hang still publishes a (partial) report before the job timeout.
