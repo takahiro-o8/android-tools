@@ -51,3 +51,6 @@ e2e/test.py               アプリ固有の E2E 手順(templates/e2e/test.py �
 - 全アプリが `main` を直接使う。壊すと全アプリのビルドが止まるので、変えたら代表アプリ(launcher)で `[e2e]` 付きの push とビルドを通して確認する
 - 互換性を壊す変更(入力名の変更など)は、使っている全アプリの呼び出しファイルを同時に直す
 - 判断は [docs/DECISIONS.md](docs/DECISIONS.md)、作業記録は [docs/DEVLOG.md](docs/DEVLOG.md)
+
+## 共通ウィジェット・フォント仕様（2026-11-03、ユーザー指示）
+既存・新規アプリ共通で [docs/WIDGET_STYLE.md](docs/WIDGET_STYLE.md) を適用する。背景は透明、システムのライトモードは黒文字、ダークモードは縁取り付き白文字。壁紙による文字色判定は使わない。アプリUIのフォントはPixelのGoogle Sansを優先し、未搭載端末は標準フォント。正本は [android-toolsの共通仕様](https://github.com/takahiro-o8/android-tools/blob/main/docs/WIDGET_STYLE.md)。過去の異なるウィジェット外観より今回の指定を優先する。
