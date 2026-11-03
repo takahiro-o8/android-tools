@@ -47,3 +47,10 @@
 ## 2026-11-03 共通ウィジェット・書体仕様
 - ユーザー指定をdocs/WIDGET_STYLE.mdとAGENTS.mdに記録。既存/新規アプリ共通、壁紙判定は廃止。
 - 共通actionの実装や入出力は変更していない。文書のリンクと差分を確認。E2Eは新規に実行していない。
+
+### 共通仕様の適用結果
+- Traffic Monitor 1.3.1: https://github.com/takahiro-o8/traffic-monitor/releases/tag/v1.3.1
+- AI Usage 0.6.10: https://github.com/takahiro-o8/ai-usage/releases/tag/signed-82086220cca779bd6b956426f37dc26388286bc8
+- Launcher 2.4.1: https://github.com/takahiro-o8/launcher/releases/tag/v2.4.1
+- File 1.0.1: ソース検証済み、既存署名鍵のSecrets復元待ち。詳細: https://github.com/takahiro-o8/android-file/blob/main/docs/CHANGES-1.0.1.md
+- 既存の自動チェック・配布工程を利用。LauncherのE2Eはアプリ固有のオーナー指示に従い未実行。共通actionのコード変更なし。実機の外観は未確認。
