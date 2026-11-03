@@ -14,3 +14,6 @@
 - Android 17(API 37)のイメージは、エミュレーター 37.2 では screencap と surfaceflinger が `Assertion failed: !rcEnc->featureInfo()->hasReadColorBufferDma` で異常終了する。swiftshader_indirect / swangle_indirect / guest のどれでも同じ(機能を無効にするフラグも存在しない)
 - オーナー判断: Android 16 に変更(選択肢: 17 を試してだめなら 16/16 に変更/17 で粘る)
 - 新しいエミュレーターで直ったら `system-image` を戻す
+
+## ADR-0003 全アプリのウィジェットと書体を統一（2026-11-03）
+ユーザーが既存・将来の全アプリに、透明背景・システムのライト=黒文字／ダーク=縁取り付き白文字・Pixel標準フォントを指定。正本をWIDGET_STYLE.mdに置き、各アプリから参照する。今回の変更は仕様文書のみでビルド/E2Eのactionインターフェイスには変更なし。
