@@ -54,3 +54,7 @@ e2e/test.py               アプリ固有の E2E 手順(templates/e2e/test.py �
 
 ## 共通ウィジェット・フォント仕様（2026-11-03、ユーザー指示）
 既存・新規アプリ共通で [docs/WIDGET_STYLE.md](docs/WIDGET_STYLE.md) を適用する。背景は透明、システムのライトモードは黒文字、ダークモードは縁取り付き白文字。壁紙による文字色判定は使わない。アプリUIのフォントはPixelのGoogle Sansを優先し、未搭載端末は標準フォント。正本は [android-toolsの共通仕様](https://github.com/takahiro-o8/android-tools/blob/main/docs/WIDGET_STYLE.md)。過去の異なるウィジェット外観より今回の指定を優先する。
+
+## Androidの開発言語（2026-11-05、ユーザー指示）
+
+今後Codexで開発するAndroidアプリは、既存・新規を問わずKotlinを標準とする。アプリ本体、単体テスト、実機テストはKotlinで実装し、Gradle設定はKotlin DSL（`.gradle.kts`）を使う。既存Javaの移行では挙動・保存データ・アプリID・署名の互換性を保ち、回帰テストを行う。第三者ライブラリや生成コードを無理に書き換えない。

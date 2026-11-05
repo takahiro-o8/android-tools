@@ -54,3 +54,7 @@
 - Launcher 2.4.1: https://github.com/takahiro-o8/launcher/releases/tag/v2.4.1
 - File 1.0.1: ソース検証済み、既存署名鍵のSecrets復元待ち。詳細: https://github.com/takahiro-o8/android-file/blob/main/docs/CHANGES-1.0.1.md
 - 既存の自動チェック・配布工程を利用。LauncherのE2Eはアプリ固有のオーナー指示に従い未実行。共通actionのコード変更なし。実機の外観は未確認。
+
+## 2026-11-05 Androidの開発言語をKotlinに統一
+
+ユーザー指示により、今後のCodexによる既存・新規Androidアプリ開発はKotlinを標準とし、テストとGradle Kotlin DSLも含めて共通AGENTS.mdへ記録。今回は文書のみの変更で、共有Actionsの入出力・ビルド処理は変更なし。
