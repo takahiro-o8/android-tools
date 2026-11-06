@@ -22,3 +22,7 @@
 
 ## 使っているアプリ
 - launcher
+
+## 全アプリのデザイン
+
+既存・新規アプリとも[Material Design共通仕様](docs/MATERIAL_DESIGN.md)を常に適用します。ビューアーやダイアログを含む全画面をMaterial 3で統一します。新規アプリのAGENTS.mdにもこの参照を記載してください。
