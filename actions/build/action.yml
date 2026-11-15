@@ -1,49 +1,51 @@
-name: Build and release APK
-description: >
-  Builds the release APK and publishes it on GitHub Releases: rolling pre-release "dev" for every
-  main push, "vX.Y.Z" when version.properties has a version with no release yet, and the build log
-  in pre-release "ci-logs" on failure. See docs/BUILD.md.
-
+name: Production APK build
+description: Build only one signed production APK on main and retain three releases.
 inputs:
   app-name:
-    description: Display name used for APK file names and release titles (e.g. "Launcher")
+    description: APK display name
     required: true
   module:
-    description: Gradle module of the app
+    description: Application Gradle module
     default: app
   key-alias:
-    description: Alias the release keystore must contain; any other keystore is not accepted
+    description: Fixed signing alias
     required: true
   keystore-base64:
-    description: Release keystore (.jks) as base64 (pass from a secret)
-    default: ''
+    description: Existing production signing key
+    required: true
   keystore-password:
-    description: Password of the keystore and its key (pass from a secret)
+    description: Keystore password
+    required: true
+  key-password:
+    description: Optional separate key password
     default: ''
-  version-file:
-    default: version.properties
-  changelog:
-    default: docs/CHANGELOG.md
-  java-version:
-    default: '21'
-
+  expected-certificate:
+    description: Optional SHA-256 fingerprint of installed signing certificate
+    default: ''
+  signing-mode:
+    description: properties or env
+    default: properties
 runs:
   using: composite
   steps:
     - uses: actions/setup-java@v4
       with:
-        distribution: zulu
-        java-version: ${{ inputs.java-version }}
+        distribution: temurin
+        java-version: '21'
+    - uses: android-actions/setup-android@v3
+      with:
+        packages: 'platform-tools platforms;android-37.0 build-tools;37.0.0'
     - uses: gradle/actions/setup-gradle@v4
     - shell: bash
-      run: bash "${{ github.action_path }}/build.sh"
       env:
         APP_NAME: ${{ inputs.app-name }}
         MODULE: ${{ inputs.module }}
         KEY_ALIAS: ${{ inputs.key-alias }}
         KEYSTORE_BASE64: ${{ inputs.keystore-base64 }}
         KEYSTORE_PASSWORD: ${{ inputs.keystore-password }}
-        VERSION_FILE: ${{ inputs.version-file }}
-        CHANGELOG: ${{ inputs.changelog }}
-        EVENT_NAME: ${{ github.event_name }}
+        KEY_PASSWORD: ${{ inputs.key-password }}
+        SIGNING_MODE: ${{ inputs.signing-mode }}
+        EXPECTED_CERT: ${{ inputs.expected-certificate }}
         GH_TOKEN: ${{ github.token }}
+        GH_REPO: ${{ github.repository }}
+      run: bash "${{ github.action_path }}/build.sh"
