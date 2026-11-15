@@ -3,15 +3,7 @@
 # KEYSTORE_PASSWORD VERSION_FILE CHANGELOG EVENT_NAME GH_TOKEN (+ the usual GITHUB_*).
 set -uo pipefail
 
-fail() {  # upload the log to the "ci-logs" pre-release so AI sessions can read it, then stop
-  echo "::error::$1"
-  log="build-log-${GITHUB_RUN_ID}.txt"
-  { echo "$1"; echo; tail -c 900000 build.log 2>/dev/null; } > "$log"
-  gh release view ci-logs >/dev/null 2>&1 || \
-    gh release create ci-logs --prerelease --title "CI failure logs" --notes "Failed build logs (latest first). Safe to delete."
-  gh release upload ci-logs "$log" --clobber
-  exit 1
-}
+fail() { echo "::error::$1" >&2; test ! -f build.log || tail -n 120 build.log >&2; exit 1; }
 
 name=$(grep '^VERSION_NAME=' "$VERSION_FILE" | cut -d= -f2 | tr -d '[:space:]')
 code=$(grep '^VERSION_CODE=' "$VERSION_FILE" | cut -d= -f2 | tr -d '[:space:]')
