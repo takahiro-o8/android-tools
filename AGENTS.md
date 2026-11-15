@@ -1,79 +1,33 @@
-# AGENTS.md — 全アプリ共通の AI 向け作業ルール
+# 全アプリ共通のAI開発ルール
 
-> **最優先（2026-11-16改定）**：AIの種類を問わず、[全アプリ共通の最新運用方針](docs/APP_BUILD_POLICY.md)を最初に読み、過去の競合する開発・検査・バージョン運用ルールより優先してください。共通方針は自作Javaの次回完全Kotlin化、最新版安定ツールチェーンへの全アプリ統一、main更新後の即時APK配布を定めます。
+**最新版の正本**：[APP_BUILD_POLICY.md](docs/APP_BUILD_POLICY.md) ／ [安全な署名・配布](docs/RELEASE_SAFETY.md) ／ [GitHub画面での鍵設定](docs/SIGNING_BROWSER.md)。
 
+このルールはClaude、Codex、Cursor、Meta Muse Code、xAI Grok Build、その他の将来のAIで共通。AIごとの「管理用リポジトリ」は不要。各アプリの`AGENTS.md`および`CLAUDE.md`は本書への参照とアプリ固有の注意に限る。外部URLが読めないAIは取得不能と報告し、共通ルールを読んだと主張しない。
 
-オーナーの Android アプリはすべてこのルールで開発します。どの AI / 人でも、会話履歴なしで同じやり方を再現できることが目的です。
-各アプリの `CLAUDE.md`(または `AGENTS.md`)は、このファイルを最初に読むよう指示し、アプリ固有の注意だけを書きます。
-アプリ固有のルールとこのファイルが食い違うときは、アプリ側を優先します。
+## 優先順位
+1. オーナーの**最新の明示的な指示**。
+2. このリポジトリの`docs/APP_BUILD_POLICY.md`と`docs/RELEASE_SAFETY.md`。
+3. 各アプリ固有の機能・権限・保存データ仕様と、既存アプリID・固定署名鍵。
+4. 過去の`docs/SPEC.md`、`docs/DECISIONS.md`、`docs/DEVLOG.md`、旧READMEなどの履歴。
 
-## 恒常ルール(オーナー指示)
-1. **実装・実行の前に、必ず質問を重ねて仕様を詰める。** 選択肢を示して確認し、必要なら何度でも聞く。判断に迷う機能追加・設定追加も先に確認する
-2. **APK で配布・更新できること。** GitHub Releases に APK を置く。同じ署名鍵で署名し、versionCode は単調増加(上書き更新できるように)。リリースに sha256 ファイルは付けない
-3. **記録はすべて GitHub に置く。** 開発思想・仕様・判断・作業記録・残作業をリポジトリに書く。チャットだけに残った決定は存在しないものとして扱う
-4. **設定変更で古い設定・データが残って反映されない不具合を出さない。** 詳細は [docs/PRINCIPLES.md](docs/PRINCIPLES.md)
-5. **動作確認**
-   - 自動: GitHub 上のエミュレーター(KVM あり、Android 16)で E2E テスト。手順は [docs/E2E.md](docs/E2E.md)
-   - 手動: Mac が使えるときは Mac 上の Android Studio / エミュレーター
-   - **仮想化なしの(極端に遅い)クラウドエミュレーターは使わない**
-6. **修正したら確認せずにリリースしてよい。** 仕様を決める質問は実装前にするが、修正が終わって動作確認(E2E)が通ったら、改めて聞かずに版を上げてリリースする
-7. **報告には常にリンクを付ける。** リリース・APK・E2E レポート・リポジトリ・コミットなど、話題にしたものの URL を添える
-8. **個人名を入れない。** オーナーの名前・アカウント名をコード・アプリ・署名証明書・資料に入れない(リポジトリ所有者名の URL は除く)。表示名やアプリ ID も一般的な名前にする
-9. **トグルスイッチは Pixel(Material 3)と同じ見た目にする。** オンのときはトラックを端末のテーマ色(`system_accent1_200`)で塗り、大きいつまみ(`system_accent1_800`)にチェックマーク。オフは枠線付きの暗いトラックに小さい灰色のつまみ。標準の `Switch` のままにしない(実装例: launcher の `PixelSwitch.kt`)
+古いファイルに「PR必須」「E2E必須」「dev公開」「5版保持」「保存版の削除禁止」とあっても、現在の最新方針を優先する。
 
-## 各アプリのリポジトリの標準構成
-```
-CLAUDE.md / AGENTS.md     AI 向けルール(このファイルへの参照 + アプリ固有の注意)
-README.md                 何のアプリか・入れ方
-version.properties        VERSION_NAME / VERSION_CODE(CI が読む)
-docs/SPEC.md              仕様と実装状態
-docs/DECISIONS.md         判断の記録(ADR)。覆すときは新しい ADR を追記
-docs/DEVLOG.md            作業記録(やったこと・理由・確認結果・未確認事項)
-docs/TODO.md              残作業
-docs/CHANGELOG.md         ## X.Y.Z ごとの変更点(リリースノートになる)
-.github/workflows/build.yml   templates/workflows/build.yml をコピー
-.github/workflows/e2e.yml     templates/workflows/e2e.yml をコピー
-e2e/test.py               アプリ固有の E2E 手順(templates/e2e/test.py が雛形)
-```
-新しいアプリの始め方は [README.md](README.md)。
+## 個人用アプリの運用
+- オーナーがAIに指示した変更を反映したら、その成功ビルドをそのまま本番APKとしてGitHub Releasesに公開する。PR・手動承認・詳細テストは通常不要。**ビルドが成功した事実と、動作確認済みであることは区別する。**
+- 各リポジトリの最新の正式APKと過去2件だけを保持する。開発用`dev`、診断用`ci-logs`/`e2e-report`、下書きReleaseは作らない。失敗原因はActionsの通常ログで確認する。
+- 必ず**既存の固定署名鍵**で署名し、既存インストールから更新可能な増分`versionCode`、アプリID、証明書SHA-256の一致を確認してから公開する。既存鍵が使えなければ公開中止。決して自動で鍵を再発行したりデバッグ鍵で代用しない。
+- GitHubアプリから使いやすいよう、APKをReleaseのAssetsへ**ZIPに入れず直接添付**。報告時にはAPKが添付された実在のReleaseページのリンクを示す。直接`/releases/download/`リンクやActionsのZIPを主な案内にしない。
+- 秘密鍵・パスワード・トークン・メール内容・個人データをGit、ログ、チャットに記載しない。GitHub Secretsと本人管理のバックアップで保持する。
 
-## 作業の始めと終わり
-- **始め**: アプリの `docs/SPEC.md`・`docs/TODO.md`・`docs/DEVLOG.md` の最新数件・関係する `docs/DECISIONS.md` を読む。Releases の `dev`(最新ビルド)・`ci-logs`(失敗ログ)・`e2e-report`(最新 E2E 結果)を確認する
-- **終わり**: `docs/DEVLOG.md` に追記。仕様・残作業・判断が変わったら各ファイルを更新。リリースするなら `VERSION_CODE` を増やし `docs/CHANGELOG.md` に `## X.Y.Z` を足して `main` に push(CI がタグと正式リリースを作る)
+## 実装・技術の共通仕様
+- 自作のAndroidアプリ・ヘルパー・自作テストをKotlinへ完全統一。残存する`.java`は次回改修時にKotlinへ変換して削除する（Javaラッパー残しは禁止）。第三者のライブラリや自動生成コードは除外。Gradleの記述はKotlin DSL。
+- 最新の**相互互換性のある正式安定版**のAndroid SDK、AGP、Gradle、Kotlin、JDK、ライブラリを採用する。ビルド検証をせず一斉置換して完了と主張しない。`minSdk`はPixel 8のAndroid 14（API 34）を基本下限とし、ユーザーの現行Pixel 8で使えることを優先する。
+- 最新のMaterial 3の公式コンポーネントと明暗テーマを使う。[デザイン原則](docs/MATERIAL_DESIGN.md)と[ウィジェット・フォント共通仕様](docs/WIDGET_STYLE.md)を参照する。表示先のファイル・文書そのものの書体を変えない。
+- 新設定を反映する際は旧キャッシュ・古い取得結果が表示を上書きしないようにする。[開発原則](docs/PRINCIPLES.md)。
+- アプリ固有のID、権限、署名鍵、保存データ・インストール更新互換性を維持する。オーナーの個人名をコード、アプリ名、証明書や説明に含めない。
 
-## AI セッション(クラウドのサンドボックス)での制約と回避
-- Maven Central が 429 を返しローカルでビルドできないことが多い → ビルドは GitHub Actions に任せる
-- タグの push、Releases の作成 API、Actions の API は 403 → 次の仕組みで回避している
-  - リリース: `version.properties` を上げて push すると CI が作る([docs/BUILD.md](docs/BUILD.md))
-  - ビルド結果: Releases の `dev` / `ci-logs` を読む
-  - E2E: コミットメッセージに `[e2e]` を入れて push → Releases の `e2e-report` を読む
-- Releases は読める: `gh api repos/<owner>/<repo>/releases`、添付は `gh api -H "Accept: application/octet-stream" repos/<owner>/<repo>/releases/assets/<id> > file`
-- 署名鍵はリポジトリに入れない(GitHub Secrets)
-
-## この共通リポジトリ(android-tools)を変えるとき
-- 全アプリが `main` を直接使う。壊すと全アプリのビルドが止まるので、変えたら代表アプリ(launcher)で `[e2e]` 付きの push とビルドを通して確認する
-- 互換性を壊す変更(入力名の変更など)は、使っている全アプリの呼び出しファイルを同時に直す
-- 判断は [docs/DECISIONS.md](docs/DECISIONS.md)、作業記録は [docs/DEVLOG.md](docs/DEVLOG.md)
-
-## 共通ウィジェット・フォント仕様（2026-11-03、ユーザー指示）
-既存・新規アプリ共通で [docs/WIDGET_STYLE.md](docs/WIDGET_STYLE.md) を適用する。背景は透明、システムのライトモードは黒文字、ダークモードは縁取り付き白文字。壁紙による文字色判定は使わない。アプリUIのフォントはPixelのGoogle Sansを優先し、未搭載端末は標準フォント。正本は [android-toolsの共通仕様](https://github.com/takahiro-o8/android-tools/blob/main/docs/WIDGET_STYLE.md)。過去の異なるウィジェット外観より今回の指定を優先する。
-
-## Androidの開発言語（2026-11-05、ユーザー指示）
-
-今後Codexで開発するAndroidアプリは、既存・新規を問わずKotlinを標準とする。アプリ本体、単体テスト、実機テストはKotlinで実装し、Gradle設定はKotlin DSL（`.gradle.kts`）を使う。既存Javaの移行では挙動・保存データ・アプリID・署名の互換性を保ち、回帰テストを行う。第三者ライブラリや生成コードを無理に書き換えない。
-
-## マテリアルデザインと Kotlin(2026-11-06、オーナー指示)
-- 画面は **マテリアルデザイン(Material 3)に準拠** する。部品(スイッチ・セグメントボタン・ダイアログ・リスト)、余白、角丸、色(端末のテーマ色)、動きを Material 3 にそろえる。ライトモードでは白ベース、ダークモードでは黒ベースにし、片方の色のままにしない
-- 段階が少ない設定(2〜5 段階程度)はスライダーではなく **1 行のセグメントボタン(ラジオ)** にする
-- 言語は Kotlin。Java などから移行するときは **ラッパーで包まず、一から Kotlin で作り直す**(挙動・保存データ・アプリ ID・署名の互換性は保つ)
-## Material Design（2026-11-06、恒常的なユーザー指示）
-
-既存・新規を問わず、今後開発・改修するAndroidアプリの全画面とビューアーを常に最新安定版のMaterial Design（現在はMaterial 3）に準拠させる。[共通デザイン仕様](https://github.com/takahiro-o8/android-tools/blob/main/docs/MATERIAL_DESIGN.md)を適用する。公式コンポーネント・配色トークン・タイポグラフィ・形状・状態表現・48dp以上の操作領域を使用し、ライト／ダークとアクセシビリティを検証する。旧来のプラットフォームTheme.Materialや独自の模倣をMaterial 3準拠と扱わない。ウィジェットの透明背景と文字色の既存ルールは維持する。
-
-## 開発AIを限定しない共通ルール（2026-11-16追記）
-
-- 開発担当は **Codex、Claude、Cursor、Meta Muse Code、xAI Grok Build、および将来のAI** のいずれでもよい。AIの製品名が変わっても同じAndroidビルド・署名・配布・Kotlin・SDK・MD方針を適用する。
-- **AIごとの管理リポジトリを新設しない。** 共通方針の唯一の正本は `android-tools/AGENTS.md` と `android-tools/docs/APP_BUILD_POLICY.md`。各アプリの `AGENTS.md` を入口とし、Claude向け `CLAUDE.md` は短く共通ルールを参照する。READMEは人向け説明を残す。
-- Meta Muse Code・Grok Buildとも `AGENTS.md` のプロジェクトルールを読む機能がある。ただしリポジトリを信頼済みとする操作など製品固有条件があり、外部URLは勝手に読み込まれるとは限らないため、作業開始時に共通ファイルの実際の取得を指示する。
-- `codex` リポジトリは旧・開発指示資料の保管場所であって、今後の独立した正本ではない。必要な履歴は保持し、参照先は `android-tools` に統一する。
-
+## 開始と終了
+- 最初に該当アプリのREADME・仕様・未完了事項・直近の判断・必要な関連コードを確認する。自明な実装のために不要な質問やAIの再調査を増やさない。重要な未確定仕様は着手前に確認する。
+- 変更をGitへ保存し、APK公開や署名検証の結果を**確認できた範囲だけ**報告する。実機で更新インストールした事実がなければ実機検証済みと書かない。
+- 各アプリの履歴と作業ログはそのアプリのリポジトリに保管。全アプリ共通方針はこの`android-tools`だけに保管する。
+- 共通Actionsの変更では、現在の呼び出し元が壊れないか確認し、必要なら段階的に移行する。**ドキュメントを書き換えただけではGitHub Actionsのビルド方式は切り替わらない。**

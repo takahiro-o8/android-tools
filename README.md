@@ -1,39 +1,25 @@
 # android-tools
 
-## 構成の実体
+**全Androidアプリ・全開発AIの共通基盤。** Claude、Codex、Cursor、Meta Muse Code、Grok Build、その他のAIに共通。特定のAIの専用リポジトリは不要。
 
-このリポジトリはアプリ本体やAPKではなく、Markdown（.md：AIへの指示と文書）、YAML（.yml：GitHub Actionsの設定）、Shell（.sh：ビルド・配布コマンド）、Python（.py：E2E補助）でできたテキストファイルの集合です。各アプリから処理を呼び出します。
+## ファイルの実体
+ここにあるのはAPKそのものではなく、**テキストファイル**です。`.md`は開発ルール・設計資料、`.yml`はGitHub Actionsと共通Action、`.sh`はビルド・配布コマンド、`.py`はビルド後の整理や補助処理です。
 
-[2026-11-16 共通開発・ビルド方針](docs/APP_BUILD_POLICY.md)を最優先し、既存の説明と相反する運用は次回の改修で移行します。説明を変えただけでは実際のワークフローは自動変更されません。
+## 現在の正本
+- [AGENTS.md](AGENTS.md)：すべてのAI向け作業ルール
+- [docs/APP_BUILD_POLICY.md](docs/APP_BUILD_POLICY.md)：個人用・即時本番・Kotlin・SDK・3世代保持
+- [docs/RELEASE_SAFETY.md](docs/RELEASE_SAFETY.md)：署名証明書・アプリID・versionCode・APK公開前の安全確認
+- [docs/SIGNING_BROWSER.md](docs/SIGNING_BROWSER.md)：GitHub画面から署名設定と既存Secretsを確認する方法
+- [docs/MATERIAL_DESIGN.md](docs/MATERIAL_DESIGN.md)：全アプリ共通のMaterial 3
+- [docs/WIDGET_STYLE.md](docs/WIDGET_STYLE.md)：ウィジェット・Google Sansの仕様とランチャー例外
+- [docs/PRINCIPLES.md](docs/PRINCIPLES.md)：設定変更時の状態整合性と依存削減
+- [scripts/retain-apk-versions.py](scripts/retain-apk-versions.py)：直近3正式APKを残し旧Releaseを削除する共通スクリプト
 
+## 実装ファイル（旧方式を含む）
+- `actions/build/`：GitHub Actionsから呼び出す旧ビルド・配布処理。**現在の「正式APKだけ公開する」方針とは未統一で、移行作業が必要**。
+- `actions/e2e/`、`e2e/`：従来のエミュレーター検査。個人用運用では通常の自動検査から除外する方針。
+- `templates/`：従来の新規アプリ作成用雛形。旧方式であるため、採用前に現行ポリシーとの整合を確認する。
+- `docs/BUILD.md`、`docs/E2E.md`、`docs/DECISIONS.md`、`docs/DEVLOG.md`：旧実装の説明・履歴。現行方針と矛盾する場合は上の正本が優先。
 
-オーナーの Android アプリで共通に使う仕組みとルール。各アプリは数行の呼び出しファイルとアプリ固有のテスト手順だけを持ち、ここの `main` を常に使います。
-
-| 場所 | 内容 |
-|---|---|
-| [AGENTS.md](AGENTS.md) | 全アプリ共通の AI 向け作業ルール(**最初に読む**) |
-| [actions/build](actions/build) | APK のビルドと GitHub Releases への公開(`dev` / `vX.Y.Z` / `ci-logs`)。説明: [docs/BUILD.md](docs/BUILD.md) |
-| [actions/e2e](actions/e2e) | エミュレーターでの E2E テストと `e2e-report` への公開。説明: [docs/E2E.md](docs/E2E.md) |
-| [e2e/adbtest.py](e2e/adbtest.py) | E2E テストを書くための adb 操作の部品(標準ライブラリのみ) |
-| [templates](templates) | 各アプリにコピーするワークフローとテストの雛形 |
-| [docs/PRINCIPLES.md](docs/PRINCIPLES.md) | 全アプリ共通の開発原則 |
-
-## 新しいアプリに入れる
-1. `templates/workflows/build.yml` と `e2e.yml` をアプリの `.github/workflows/` にコピーし、`APP_` の部分を設定
-2. `templates/e2e/test.py` を `e2e/test.py` にコピーして手順を書く
-3. `version.properties` と `docs/`(SPEC・DECISIONS・DEVLOG・TODO・CHANGELOG)を用意([AGENTS.md](AGENTS.md) の標準構成)
-4. 署名鍵を作って Secrets に登録([docs/BUILD.md](docs/BUILD.md))
-5. アプリの `CLAUDE.md` に「まず android-tools の AGENTS.md を読む」と書く
-
-呼び出しファイルは `${{ github.repository_owner }}/android-tools` を取得して使うので、アカウント名を書く必要はありません(このリポジトリは公開のため、どのアプリからも取得できます)。
-
-## 使っているアプリ
-- launcher
-
-## 全アプリのデザイン
-
-既存・新規アプリとも[Material Design共通仕様](docs/MATERIAL_DESIGN.md)を常に適用します。ビューアーやダイアログを含む全画面をMaterial 3で統一します。新規アプリのAGENTS.mdにもこの参照を記載してください。
-
-## Muse Code・Grok Build・その他のAI
-
-どのAIでも[共通の開発・ビルド・配布ルール](docs/APP_BUILD_POLICY.md)を適用します。Muse Code・Grok Buildもプロジェクトの `AGENTS.md` を利用できるため、AIごとに別の開発基盤を作る必要はありません。旧 `codex` リポジトリは資料の履歴として残し、共通ルールの更新先にはしません。
+## アプリ側の構成
+各アプリの`AGENTS.md`/`CLAUDE.md`は本共通ルールへの参照とアプリ固有の制約だけにし、READMEはそのアプリの使い方を記す。アプリID・既存の署名鍵は共通化しない。
