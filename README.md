@@ -33,3 +33,7 @@
 ## 全アプリのデザイン
 
 既存・新規アプリとも[Material Design共通仕様](docs/MATERIAL_DESIGN.md)を常に適用します。ビューアーやダイアログを含む全画面をMaterial 3で統一します。新規アプリのAGENTS.mdにもこの参照を記載してください。
+
+## Muse Code・Grok Build・その他のAI
+
+どのAIでも[共通の開発・ビルド・配布ルール](docs/APP_BUILD_POLICY.md)を適用します。Muse Code・Grok Buildもプロジェクトの `AGENTS.md` を利用できるため、AIごとに別の開発基盤を作る必要はありません。旧 `codex` リポジトリは資料の履歴として残し、共通ルールの更新先にはしません。

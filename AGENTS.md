@@ -69,3 +69,11 @@ e2e/test.py               アプリ固有の E2E 手順(templates/e2e/test.py �
 ## Material Design（2026-11-06、恒常的なユーザー指示）
 
 既存・新規を問わず、今後開発・改修するAndroidアプリの全画面とビューアーを常に最新安定版のMaterial Design（現在はMaterial 3）に準拠させる。[共通デザイン仕様](https://github.com/takahiro-o8/android-tools/blob/main/docs/MATERIAL_DESIGN.md)を適用する。公式コンポーネント・配色トークン・タイポグラフィ・形状・状態表現・48dp以上の操作領域を使用し、ライト／ダークとアクセシビリティを検証する。旧来のプラットフォームTheme.Materialや独自の模倣をMaterial 3準拠と扱わない。ウィジェットの透明背景と文字色の既存ルールは維持する。
+
+## 開発AIを限定しない共通ルール（2026-11-16追記）
+
+- 開発担当は **Codex、Claude、Cursor、Meta Muse Code、xAI Grok Build、および将来のAI** のいずれでもよい。AIの製品名が変わっても同じAndroidビルド・署名・配布・Kotlin・SDK・MD方針を適用する。
+- **AIごとの管理リポジトリを新設しない。** 共通方針の唯一の正本は `android-tools/AGENTS.md` と `android-tools/docs/APP_BUILD_POLICY.md`。各アプリの `AGENTS.md` を入口とし、Claude向け `CLAUDE.md` は短く共通ルールを参照する。READMEは人向け説明を残す。
+- Meta Muse Code・Grok Buildとも `AGENTS.md` のプロジェクトルールを読む機能がある。ただしリポジトリを信頼済みとする操作など製品固有条件があり、外部URLは勝手に読み込まれるとは限らないため、作業開始時に共通ファイルの実際の取得を指示する。
+- `codex` リポジトリは旧・開発指示資料の保管場所であって、今後の独立した正本ではない。必要な履歴は保持し、参照先は `android-tools` に統一する。
+

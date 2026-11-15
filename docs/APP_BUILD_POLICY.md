@@ -40,3 +40,11 @@
 - 同じversionNameでも変更ごとに増えるversionCodeと実行番号を使って別の更新版として扱う。保存数の判断は正式APKが公開された時系列による。
 - `scripts/retain-apk-versions.py --keep 3 --apply --remove-aux`で正式版以外も削除する。
 - 古い`actions/build`はdev/診断Releaseを作成するため、新たな共通公開処理に置換するまで使用を停止する。
+
+## 開発AIを限定しない共通ルール（2026-11-16追記）
+
+- 開発担当は **Codex、Claude、Cursor、Meta Muse Code、xAI Grok Build、および将来のAI** のいずれでもよい。AIの製品名が変わっても同じAndroidビルド・署名・配布・Kotlin・SDK・MD方針を適用する。
+- **AIごとの管理リポジトリを新設しない。** 共通方針の唯一の正本は `android-tools/AGENTS.md` と `android-tools/docs/APP_BUILD_POLICY.md`。各アプリの `AGENTS.md` を入口とし、Claude向け `CLAUDE.md` は短く共通ルールを参照する。READMEは人向け説明を残す。
+- Meta Muse Code・Grok Buildとも `AGENTS.md` のプロジェクトルールを読む機能がある。ただしリポジトリを信頼済みとする操作など製品固有条件があり、外部URLは勝手に読み込まれるとは限らないため、作業開始時に共通ファイルの実際の取得を指示する。
+- `codex` リポジトリは旧・開発指示資料の保管場所であって、今後の独立した正本ではない。必要な履歴は保持し、参照先は `android-tools` に統一する。
+
