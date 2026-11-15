@@ -28,6 +28,17 @@ inputs:
 runs:
   using: composite
   steps:
+    - name: Validate existing signing secrets before provisioning Android
+      shell: bash
+      env:
+        EXISTING_KEY: ${{ inputs.keystore-base64 }}
+        EXISTING_PASSWORD: ${{ inputs.keystore-password }}
+        EXISTING_ALIAS: ${{ inputs.key-alias }}
+      run: |
+        if [ -z "$EXISTING_KEY" ] || [ -z "$EXISTING_PASSWORD" ] || [ -z "$EXISTING_ALIAS" ]; then
+          echo "::error::Missing existing Android signing Secrets. Register the original keystore and password for this repository; do not create a replacement key."
+          exit 1
+        fi
     - uses: actions/setup-java@v4
       with:
         distribution: temurin

@@ -60,8 +60,21 @@ grep -Fqi "$approved" "$RUNNER_TEMP/apk-signature.txt" || { echo "::error::APK s
 details=$("$tools/aapt" dump badging "$apk" | head -1)
 case "$details" in *"versionCode='$CI_VERSION_CODE'"*"versionName='$CI_VERSION_NAME'"*) ;; *) echo "::error::APK version does not match CI version"; exit 1;; esac
 main_sha=$(git ls-remote origin refs/heads/main | cut -f1)
+if [ -z "$main_sha" ]; then
+  echo "::error::Cannot verify the latest main commit"; exit 1
+fi
 if [ "$main_sha" != "$GITHUB_SHA" ]; then
-  echo "Newer main commit exists; skip obsolete release."; exit 0
+  # Documentation-only follow-up commits must not prevent an already-built APK
+  # from reaching production. Changes to code/workflows still supersede it.
+  git fetch --no-tags --depth=1 origin main >/dev/null
+  changed=$(git diff --name-only --no-renames "$GITHUB_SHA" FETCH_HEAD) || {
+    echo "::error::Could not compare current main to this build"; exit 1;
+  }
+  if printf '%s\n' "$changed" | grep -Ev '(^$|\.md$)' >/dev/null; then
+    echo "::notice::Newer code/configuration commit exists; skip obsolete APK."
+    exit 0
+  fi
+  echo "::notice::Only Markdown changed on main; publishing the verified APK from $GITHUB_SHA."
 fi
 name="$APP_NAME-$CI_VERSION_NAME.apk"
 cp "$apk" "$name"

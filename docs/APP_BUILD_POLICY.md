@@ -24,9 +24,11 @@
 - README・古いADRに書かれた旧版の検査/配布条件は当時の履歴として尊重するが、現行運用の根拠にしない。
 
 ## 実装の状況（2026-11-16時点）
-- 共通指示と3世代整理のGitHub Actionsは全5アプリに導入済み。ただし旧Actionsにも`dev`を作る処理や重い自動テストが一部残るため、各アプリのビルド/配布ワークフロー自体の移行は未完了。
-- アプリ別の最新安定SDK・AGP・Gradle・JDKへの実更新は未完了。Kotlin自作Javaの残存は`limitless/tools/widget-host-check/src/main/java/com/aiusage/hostcheck/HostActivity.java`の1ファイルを確認済み。
-- 共通削除スクリプトは`scripts/retain-apk-versions.py`。旧リリース処理との競合がないように各アプリのワークフローを移行する。
+- 5アプリの主要ワークフローは共通の`actions/build`へ切り替え済み。単体テスト・lint・E2Eを常時のAPK公開条件にせず、正式APKだけを配布する。各アプリの旧ワークフローは撤去済み。
+- Kotlin自作Javaの残存は`limitless`の補助ソースを変換して解消済み。全アプリのSDK・AGP・Gradle・JDK・minSdkも共通設定に変更済み。ただし**実際の成功ビルドを確認したアプリと、署名鍵不足などにより配布できていないアプリを区別**する。
+- `file`ではGitHubに元の固定署名鍵Secretsが存在しないため、利用者が保管済みの鍵を登録するまで正式APKは生成・公開できない。勝手に再発行しない。
+- `scripts/retain-apk-versions.py`は最新3正式APKと補助Releaseの削除に使用。診断用のGitHub Actions実行ログは残す。
+- Markdownだけが後続コミットされた場合は、差分を確認してコードに変化がなければ先行する成功APKの配布を許可する。コードやビルド設定に新しい変更があれば古いAPKを公開しない。
 
 ## 署名鍵の管理（2026-11-16 最新の最終方針）
 - **各既存アプリの署名鍵は変更しない。** アプリ間で同じ秘密鍵に統一する案は撤回した。LauncherはLauncherの固定鍵を使い、他の各アプリもそれぞれの固定鍵を維持する。
