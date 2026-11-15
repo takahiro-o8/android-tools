@@ -1,53 +1,72 @@
 #!/usr/bin/env bash
-# Called by actions/build/action.yml. Environment: APP_NAME MODULE KEY_ALIAS KEYSTORE_BASE64
-# KEYSTORE_PASSWORD VERSION_FILE CHANGELOG EVENT_NAME GH_TOKEN (+ the usual GITHUB_*).
-set -uo pipefail
-
-fail() { echo "::error::$1" >&2; test ! -f build.log || tail -n 120 build.log >&2; exit 1; }
-
-name=$(grep '^VERSION_NAME=' "$VERSION_FILE" | cut -d= -f2 | tr -d '[:space:]')
-code=$(grep '^VERSION_CODE=' "$VERSION_FILE" | cut -d= -f2 | tr -d '[:space:]')
-[ -n "$name" ] && [ -n "$code" ] || fail "$VERSION_FILE needs VERSION_NAME and VERSION_CODE"
-
-# --- signing: only a keystore that contains KEY_ALIAS counts as the release key
-signed=false
-ks="$RUNNER_TEMP/release.jks"
-if [ -n "$KEYSTORE_BASE64" ] && [ -n "$KEYSTORE_PASSWORD" ] \
-   && echo "$KEYSTORE_BASE64" | base64 --decode > "$ks" \
-   && keytool -list -keystore "$ks" -storepass "$KEYSTORE_PASSWORD" -alias "$KEY_ALIAS" >/dev/null 2>&1; then
-  printf 'storeFile=%s\nstorePassword=%s\nkeyAlias=%s\nkeyPassword=%s\n' \
-    "$ks" "$KEYSTORE_PASSWORD" "$KEY_ALIAS" "$KEYSTORE_PASSWORD" > keystore.properties
-  signed=true
-else
-  echo "::warning::Release keystore missing or without alias '$KEY_ALIAS' - the APK is debug-signed and cannot update an installed copy."
+# Build one signed production APK, verify identity, retain only last 3 releases.
+set -euo pipefail
+umask 077
+MODULE="${MODULE:-app}"
+APP_NAME="${APP_NAME:?}"
+KEY_ALIAS="${KEY_ALIAS:?}"
+test -n "${KEYSTORE_BASE64:-}" && test -n "${KEYSTORE_PASSWORD:-}" || {
+  echo "::error::Existing production key required"; exit 1;
+}
+ks="${RUNNER_TEMP}/production.jks"
+trap 'rm -f "$ks" keystore.properties "$RUNNER_TEMP/signing.der"' EXIT
+printf '%s' "$KEYSTORE_BASE64" | base64 --decode > "$ks"
+keytool -list -keystore "$ks" -storepass "$KEYSTORE_PASSWORD" -alias "$KEY_ALIAS" >/dev/null
+keytool -exportcert -keystore "$ks" -storepass "$KEYSTORE_PASSWORD" -alias "$KEY_ALIAS" -file "$RUNNER_TEMP/signing.der" >/dev/null
+approved=$(sha256sum "$RUNNER_TEMP/signing.der" | cut -d' ' -f1)
+if [ -n "${EXPECTED_CERT:-}" ] && [ "${approved,,}" != "${EXPECTED_CERT,,}" ]; then
+  echo "::error::Certificate differs from approved signing identity"; exit 1
 fi
-
-# --- build
-./gradlew ":$MODULE:assembleRelease" --stacktrace 2>&1 | tee build.log
-[ "${PIPESTATUS[0]}" -eq 0 ] || fail "Gradle build failed"
-apk=$(find "$MODULE/build/outputs/apk/release" -name '*.apk' | head -1)
-[ -n "$apk" ] || fail "No APK produced"
-rm -f keystore.properties
-
-[ "$EVENT_NAME" = push ] && [ "$GITHUB_REF" = refs/heads/main ] || { echo "Not a main push - nothing to publish."; exit 0; }
-
-# --- rolling "dev" pre-release
-dev="$APP_NAME-$name-dev-${GITHUB_SHA::7}.apk"
-cp "$apk" "$dev"
-note="署名: 本番鍵(上書き更新できます)"
-[ "$signed" = true ] || note="署名: 一時的なデバッグ鍵(上書き更新できません。リリース用の Secrets が必要)"
-gh release delete dev --yes --cleanup-tag 2>/dev/null || true
-gh release create dev --prerelease --target "$GITHUB_SHA" --title "開発版 (main @ ${GITHUB_SHA::7})" \
-  --notes "$(printf '開発版(main の最新ビルド)\n\n- コミット: %s\n- バージョン: %s (versionCode %s)\n- %s\n' "$GITHUB_SHA" "$name" "$code" "$note")" \
-  "$dev" || fail "Could not publish the dev pre-release"
-
-# --- new version -> tag + release (sessions cannot push tags, so releasing = bump the version)
-tag="v$name"
-if [ "$signed" != true ]; then echo "Unsigned - no release."; exit 0; fi
-if gh release view "$tag" >/dev/null 2>&1; then echo "$tag already released."; exit 0; fi
-final="$APP_NAME-$name.apk"
-cp "$apk" "$final"
-notes=$(awk -v v="## $name" '$0==v{f=1;next} /^## /{f=0} f' "$CHANGELOG" 2>/dev/null)
-[ -n "$notes" ] || notes="$APP_NAME $name"
-gh release create "$tag" --target "$GITHUB_SHA" --latest --title "$APP_NAME $name" --notes "$notes" "$final" \
-  || fail "Could not create release $tag"
+if [ "${SIGNING_MODE:-properties}" = env ]; then
+  export AI_USAGE_KEYSTORE_FILE="$ks"
+  export ANDROID_KEYSTORE_PASSWORD="$KEYSTORE_PASSWORD"
+  export ANDROID_KEY_ALIAS="$KEY_ALIAS"
+  export ANDROID_KEY_PASSWORD="${KEY_PASSWORD:-$KEYSTORE_PASSWORD}"
+else
+  export SIGNING_FILE="$ks"
+  python3 - <<'PY'
+import os
+from pathlib import Path
+def esc(s):
+    if '\n' in s or '\r' in s: raise ValueError("Newlines not permitted in signing properties")
+    return ''.join('\\' + c if c in '\\ =:#!' else c for c in s)
+p = {"storeFile": os.environ["SIGNING_FILE"],
+     "storePassword": os.environ["KEYSTORE_PASSWORD"],
+     "keyAlias": os.environ["KEY_ALIAS"],
+     "keyPassword": os.environ.get("KEY_PASSWORD") or os.environ["KEYSTORE_PASSWORD"]}
+Path("keystore.properties").write_text(''.join(k+'='+esc(v)+'\n' for k,v in p.items()))
+PY
+fi
+export CI_VERSION_CODE="$((100000 + GITHUB_RUN_NUMBER))"
+export AI_USAGE_VERSION_CODE="$CI_VERSION_CODE"
+export CI_VERSION_NAME
+CI_VERSION_NAME=$(python3 - <<'PY'
+from pathlib import Path
+import re, os
+f = Path("version.properties")
+s = f.read_text() if f.exists() else Path(os.environ.get("MODULE", "app")+"/build.gradle.kts").read_text()
+m = re.search(r'(?:VERSION_NAME\s*=\s*|versionName\s*=\s*")(\d+\.\d+\.\d+)', s)
+if not m: raise SystemExit("No base VERSION_NAME")
+print(m.group(1) + ".b" + os.environ["GITHUB_RUN_NUMBER"])
+PY
+)
+echo "Assembling $APP_NAME $CI_VERSION_NAME ($CI_VERSION_CODE)"
+./gradlew ":$MODULE:assembleRelease" --no-daemon
+apk=$(find "$MODULE/build/outputs/apk/release" -name '*.apk' -type f | head -1)
+test -n "$apk" && test -s "$apk" || { echo "::error::Release APK not found"; exit 1; }
+tools="$ANDROID_HOME/build-tools/37.0.0"
+"$tools/apksigner" verify --print-certs "$apk" > "$RUNNER_TEMP/apk-signature.txt"
+grep -Fqi "$approved" "$RUNNER_TEMP/apk-signature.txt" || { echo "::error::APK signing certificate mismatch"; exit 1; }
+details=$("$tools/aapt" dump badging "$apk" | head -1)
+case "$details" in *"versionCode='$CI_VERSION_CODE'"*"versionName='$CI_VERSION_NAME'"*) ;; *) echo "::error::APK version does not match CI version"; exit 1;; esac
+main_sha=$(git ls-remote origin refs/heads/main | cut -f1)
+if [ "$main_sha" != "$GITHUB_SHA" ]; then
+  echo "Newer main commit exists; skip obsolete release."; exit 0
+fi
+name="$APP_NAME-$CI_VERSION_NAME.apk"
+cp "$apk" "$name"
+tag="build-$GITHUB_RUN_NUMBER"
+if gh release view "$tag" >/dev/null 2>&1; then echo "::error::Release already exists"; exit 1; fi
+gh release create "$tag" "$name" --target "$GITHUB_SHA" --title "$APP_NAME $CI_VERSION_NAME" --notes "Signed production APK from $GITHUB_SHA" --latest
+echo "Published https://github.com/$GH_REPO/releases/tag/$tag"
+python3 .android-tools/scripts/retain-apk-versions.py --keep 3 --apply --remove-aux
