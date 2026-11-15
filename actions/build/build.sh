@@ -51,7 +51,7 @@ print(m.group(1) + ".b" + os.environ["GITHUB_RUN_NUMBER"])
 PY
 )
 echo "Assembling $APP_NAME $CI_VERSION_NAME ($CI_VERSION_CODE)"
-./gradlew ":$MODULE:assembleRelease" --no-daemon
+if [ -f gradlew ]; then bash ./gradlew ":$MODULE:assembleRelease" --no-daemon; else gradle ":$MODULE:assembleRelease" --no-daemon; fi
 apk=$(find "$MODULE/build/outputs/apk/release" -name '*.apk' -type f | head -1)
 test -n "$apk" && test -s "$apk" || { echo "::error::Release APK not found"; exit 1; }
 tools="$ANDROID_HOME/build-tools/37.0.0"
