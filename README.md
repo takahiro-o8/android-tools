@@ -15,11 +15,12 @@
 - [docs/PRINCIPLES.md](docs/PRINCIPLES.md)：設定変更時の状態整合性と依存削減
 - [scripts/retain-apk-versions.py](scripts/retain-apk-versions.py)：直近3正式APKを残し旧Releaseを削除する共通スクリプト
 
-## 実装ファイル（旧方式を含む）
-- `actions/build/`：GitHub Actionsから呼び出す旧ビルド・配布処理。**現在の「正式APKだけ公開する」方針とは未統一で、移行作業が必要**。
-- `actions/e2e/`、`e2e/`：従来のエミュレーター検査。個人用運用では通常の自動検査から除外する方針。
-- `templates/`：従来の新規アプリ作成用雛形。旧方式であるため、採用前に現行ポリシーとの整合を確認する。
-- `docs/BUILD.md`、`docs/E2E.md`、`docs/DECISIONS.md`、`docs/DEVLOG.md`：旧実装の説明・履歴。現行方針と矛盾する場合は上の正本が優先。
+## 実装ファイル
+- `actions/build/`：**現行の本番専用ビルド処理**。既存鍵で署名して証明書・versionCodeを検証し、成功APKを正式Releaseとして公開・3世代保持する。欠落・不一致なら公開しない。
+- `templates/workflows/build.yml`：新規アプリ向けの共通Action呼び出しテンプレート。各アプリで**既存の鍵を初回だけSecretsに登録**する。
+- `docs/BUILD.md`：現在のビルド・署名・配布の設定手順。
+- `actions/e2e/`、`e2e/`：過去の調査用エミュレーター補助。通常のワークフローは呼び出さない。
+- `docs/E2E.md`、`docs/DECISIONS.md`、`docs/DEVLOG.md`：過去の実装・判断の記録であり、現在の正本ではない。
 
 ## アプリ側の構成
 各アプリの`AGENTS.md`/`CLAUDE.md`は本共通ルールへの参照とアプリ固有の制約だけにし、READMEはそのアプリの使い方を記す。アプリID・既存の署名鍵は共通化しない。

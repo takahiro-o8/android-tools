@@ -1,32 +1,32 @@
-# ビルドと配布(actions/build)
+# Androidアプリの共通ビルド・署名・配布（現行）
 
-## 流れ
-| きっかけ | 結果 |
-|---|---|
-| `main` に push | プレリリース **`dev`** を最新 APK(`<名前>-<版>-dev-<コミット>.apk`)で置き換え |
-| `version.properties` の版にまだリリースが無い状態で `main` に push | タグ **`vX.Y.Z`** と正式リリース(`<名前>-<版>.apk`)を自動作成。ノートは `docs/CHANGELOG.md` の `## X.Y.Z` 節。本番鍵で署名できたときだけ |
-| ビルド失敗 | プレリリース **`ci-logs`** にログ `build-log-<run id>.txt` |
-| pull request | ビルドだけ(公開しない) |
+## 運用
+`main`にコードをPush → `assembleRelease`のみ実行 → **既存固定鍵で署名** → APK証明書・versionCode・versionNameを確認 → 正式GitHub Releaseを作成 → 最新版＋過去2件以外のReleaseと旧補助Releaseを削除する。
 
-sha256 ファイルは付けません。
+- 新しい版をリリースするのに、`VERSION_CODE`や`VERSION_NAME`を毎回手動で増やす必要はない。CIは`versionCode = 100000 + GITHUB_RUN_NUMBER`、`versionName = <基準の版名>.b<実行番号>`を設定する。
+- ビルド失敗、署名鍵欠落、証明書不一致、APK版数不一致では公開中止。手動承認・PR・単体テスト・lint・エミュレーターE2Eを必須条件にしない。
+- **古いビルドが新しいコードを上書きしない**よう判定。後続変更がMarkdownのみなら、その直前に作った同じソースのAPKを公開できる。
+- `dev`・診断`ci-logs`/`e2e-report`・下書きReleaseは作らない。調査はGitHub Actionsのログを見る。
 
-## アプリ側に必要なもの
-- `version.properties`
-  ```
-  VERSION_NAME=1.0.0
-  VERSION_CODE=1
-  ```
-- `app/build.gradle.kts` で `version.properties` を読み、ルートに `keystore.properties`(CI が書く: `storeFile` / `storePassword` / `keyAlias` / `keyPassword`)があればリリース署名に使う。無ければデバッグ鍵
-- `.github/workflows/build.yml`(`templates/workflows/build.yml` をコピーして名前・鍵のエイリアス・Secrets 名を設定)
+## 新規アプリでの初回設定（1回だけ）
+1. `templates/workflows/build.yml`をアプリの`.github/workflows/build.yml`へコピーし、`APP_NAME`、`APP_KEY_ALIAS`、Secretsの`APP`という仮名を固有の名前に変更する。
+2. AndroidアプリのGradle設定（Kotlin DSL、共通の互換最新版SDK/AGP/Gradle/JDK）に、`version.properties`等を元にした通常のバージョンとCI環境変数による上書きを記述する：
 
-## 署名鍵(アプリごとに 1 回・オーナー作業)
-1. `keytool -genkeypair -v -keystore <app>-release.jks -alias <alias> -keyalg RSA -keysize 4096 -validity 36500 -dname "CN=<アプリ名>"`(個人名を入れない)
-2. リポジトリ → Settings → Secrets and variables → Actions に登録
-   - `<APP>_KEYSTORE_BASE64`: `base64 -w0 <app>-release.jks` の結果
-   - `<APP>_KEYSTORE_PASSWORD`: パスワード(ストア・キー共通)
-3. 鍵とパスワードはパスワードマネージャー等にも保管。失くすと既存インストールを更新できない
+```kotlin
+defaultConfig {
+    applicationId = "com.example.yourapp" // 他アプリと重複不可。既存アプリでは変更禁止。
+    minSdk = 34 // Pixel 8を前提
+    versionCode = providers.environmentVariable("CI_VERSION_CODE").orNull?.toInt()
+        ?: versionProps.getProperty("VERSION_CODE").toInt()
+    versionName = providers.environmentVariable("CI_VERSION_NAME").orNull
+        ?: versionProps.getProperty("VERSION_NAME")
+}
+```
 
-## リリース手順
-1. `VERSION_CODE` を +1、`VERSION_NAME` を更新
-2. `docs/CHANGELOG.md` に `## X.Y.Z` を追加
-3. `main` に push(タグは CI が作る)
+3. リリース署名にはルート`keystore.properties`の`storeFile`/`storePassword`/`keyAlias`/`keyPassword`を使う（`limitless`だけ既存の環境変数方式を継続）。これらの設定・鍵ファイルは`.gitignore`に追加し、Gitへ入れない。
+4. GitHubリポジトリの**Settings → Secrets and variables → Actions**に、その**アプリ固有の**鍵のBase64、ストアのパスワードを初回のみ登録。キーのパスワードが別ならそれも登録。詳しくは[署名ブラウザ設定](SIGNING_BROWSER.md)。
+5. 既存アプリの鍵・証明書・applicationIdを変更しない。証明書が既知のアプリは`expected-certificate`を設定し、正確なSHA-256を比較して更新互換性を守る。
+6. `main`にPushして[Actions](https://github.com/takahiro-o8/android-tools/actions)ではなく**当該アプリ側のActions**で実行とAPK公開を確認する。GitHub Secretsは初回登録以降、更新のたびに再設定しない。
+
+## ライフサイクル
+正式リリース直後に、`scripts/retain-apk-versions.py --keep 3 --apply --remove-aux`で保存版数を管理する。コードのGit履歴と署名鍵は削除しない。署名鍵は本人管理の安全な場所にも必ずバックアップする。

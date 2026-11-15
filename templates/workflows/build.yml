@@ -1,38 +1,33 @@
-# Build the APK and publish it on GitHub Releases (shared logic: android-tools/actions/build).
-# Copy to .github/workflows/build.yml of an app and edit the three APP_ lines.
-#   main push            -> pre-release "dev"
-#   new version in version.properties -> release vX.Y.Z (signed only)
-#   failure              -> log in pre-release "ci-logs"
+# Copy this file to an app's .github/workflows/build.yml and customize APP_* placeholders.
+# One push to main -> one verified, signed production APK Release. No dev/draft/diagnostic Releases.
+# Configure APP_KEYSTORE_BASE64 and APP_KEYSTORE_PASSWORD in THIS APP's GitHub Secrets once.
 name: Build APK
-
 on:
   push:
-    branches: [ main ]
-    paths-ignore: [ '**.md', 'docs/**' ]
-  pull_request:
+    branches: [main]
+    paths-ignore: ['**.md', 'docs/**']
   workflow_dispatch:
-
 permissions:
   contents: write
-
 concurrency:
-  group: build-${{ github.ref }}
+  group: production-${{ github.ref }}
   cancel-in-progress: true
-
 jobs:
-  build:
+  apk:
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
-      # Shared tools: always the latest main of <owner>/android-tools (no account name in this file).
       - uses: actions/checkout@v4
         with:
           repository: ${{ github.repository_owner }}/android-tools
           path: .android-tools
       - uses: ./.android-tools/actions/build
         with:
-          app-name: APP_NAME                      # e.g. Launcher (file names / release titles)
-          key-alias: APP_KEY_ALIAS                # alias inside the release keystore
+          app-name: APP_NAME
+          key-alias: APP_KEY_ALIAS
           keystore-base64: ${{ secrets.APP_KEYSTORE_BASE64 }}
           keystore-password: ${{ secrets.APP_KEYSTORE_PASSWORD }}
+          key-password: ${{ secrets.APP_KEY_PASSWORD }}
+          # Set an existing app's previously approved certificate fingerprint:
+          # expected-certificate: 64_lowercase_hex_digits
