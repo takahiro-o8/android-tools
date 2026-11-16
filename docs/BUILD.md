@@ -13,10 +13,10 @@
 この方式は**最初から新しく配布するアプリ**向け。既存4アプリの署名鍵は維持し、勝手に再生成しない。`file`はユーザーが旧版のアンインストールを了承したため例外的にこの方式へ移行する。
 
 1. **非公開GitHubリポジトリ**を使う。`templates/workflows/build.yml`をアプリの`.github/workflows/build.yml`にコピーし、`APP_NAME`（APK名）、`APP_ALIAS`（英数字の鍵名）、`APP_SIGNING_PASSWORD`（GitHub Secretの名前）を各アプリ固有の値に置き換える。`templates/version.properties`と`templates/gitignore.example`も参考にする。
-2. GitHub Settings → Secrets and variables → Actions に、**ランダム32文字以上の強いパスワード**を1項目登録する。個別パスワードを覚えたり永久保管したりする代わりに、[PC共通復旧方式](SIGNING_RECOVERY.md)で署名鍵とSecretを暗号化バックアップする。バックアップ取得までは登録したSecretを消去・変更しない。鍵はSecretではなく、パスワード暗号化された`signing/app-release.p12`として非公開Gitに保管される。
+2. GitHub Settings → Secrets and variables → Actions に、**ランダム32文字以上の強いパスワード**を1項目登録する。値はGitHub Secretsが継続的に保持するため、別途パスワードを覚えたりバックアップしたりする必要はない。Secretだけ変更すると鍵を開けなくなるため、意図しない変更はしない。鍵はSecretではなく、パスワード暗号化された`signing/app-release.p12`として非公開Gitに保管される。
 3. Actions → Build APK → Run workflow で`initialize_new_key`に**初回のみ**チェック。共通`scripts/bootstrap-signing.sh`が鍵ファイルと公開証明書のSHA-256指紋を作り、Gitにコミット。以降は**鍵を生成しない**。
 4. 共通`actions/build`が同一鍵を使い、アプリID・バージョン・署名を検証して正式APKを公開する。以後mainへのコードPushだけで自動更新。鍵パスワードの再登録は不要。
-5. 鍵の`.p12`とパスワードを**GitHubとは別に安全にバックアップ**する。パスワードを忘れたりアクセスを失うと将来の上書き更新ができない。
+5. 鍵とSecretを紛失した場合、ユーザーは旧アプリのアンインストールと再インストールを許容している。通常運用では鍵の追加バックアップを作らない。
 
 Gradle設定では、固定`applicationId`、API 34以上を標準の`minSdk`にし、CIからバージョンを上書きできるようにする。
 
@@ -33,10 +33,10 @@ defaultConfig {
 
 リリース署名はルート`keystore.properties`の`storeFile`/`storePassword`/`keyAlias`/`keyPassword`を参照し、`keystore.properties`はGitに含めない。
 
-**安全上の違い**：暗号化されたPKCS12をGitに保存するため、リポジトリを取得した攻撃者がオフラインでパスワードを総当たりする余地がある。非公開リポジトリ、十分強いランダムパスワード、アクセス制限、バックアップが必須。パスワード保護されたファイルも安全性がゼロリスクになるわけではない。
+**安全上の違い**：暗号化されたPKCS12をGitに保存するため、リポジトリを取得した攻撃者がオフラインでパスワードを総当たりする余地がある。非公開リポジトリ、十分強いランダムパスワード、アクセス制限が必須。パスワード保護されたファイルも安全性がゼロリスクになるわけではない。
 
 ## 既存4アプリの方式（変更しない）
 Launcher・Limitless・G-widget・LinkAutoDLは各アプリの従来の署名鍵をそのまま利用し、当該リポジトリのGitHub Secretsで設定する。`file`だけは元の鍵を紛失し、アンインストールを明示的に了承したため、新しい署名鍵へ一度移行する。**既存鍵を統一・再生成しない。**
 
 ## ライフサイクル
-正式リリース直後に、`scripts/retain-apk-versions.py --keep 3 --apply --remove-aux`で保存版数を管理する。コードのGit履歴と署名鍵は削除しない。署名鍵は本人管理の安全な場所にも必ずバックアップする。
+正式リリース直後に、`scripts/retain-apk-versions.py --keep 3 --apply --remove-aux`で保存版数を管理する。コードのGit履歴と署名鍵は削除しない。署名鍵の追加バックアップは行わない。紛失時のみ再インストールを許容する。
