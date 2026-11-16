@@ -36,7 +36,7 @@ fi
 # in their most recent *published APK*, not merely the configured secret.
 # Once pinned, this one-time historical APK download is no longer needed.
 if [ -z "${EXPECTED_CERT:-}" ]; then
-  prior_tag="$(gh api "repos/$GH_REPO/releases?per_page=100" --jq '[.[] | select(.draft == false and .prerelease == false) | select(any(.assets[]?; .name | ascii_downcase | endswith(".apk")))] | first | .tag_name // empty')"
+  prior_tag="$(gh api "repos/$GH_REPO/releases?per_page=100" --jq '[.[] | select(.draft == false and .prerelease == false) | select(any(.assets[]?; .name | ascii_downcase | endswith(".apk")))] | sort_by(.published_at // .created_at) | last | .tag_name // empty')"
   if [ -z "$prior_tag" ]; then
     echo "::error::No previous production APK or pinned signing certificate; refusing unverified signing identity."
     exit 1
