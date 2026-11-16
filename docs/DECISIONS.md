@@ -1,19 +1,9 @@
-# 判断の記録(ADR)
+# 判断の記録（現行方針）
 
-## ADR-0001 ビルド・配布・E2E を共通リポジトリにまとめる(2026-10-28)
-- オーナー指示: GitHub 上の動作検証を今後のすべてのアプリ・別の AI でも使えるようにする
-- 質疑応答で決定: 共通リポジトリ 1 つに集約(名前 android-tools、公開)/ビルド・リリースも共通化/全アプリ共通の AI ルールもここに置く/各アプリは常に `main` を使う/リポジトリはオーナーが作成
-- 方式: 再利用ワークフロー(`uses: owner/repo/...@main`)ではなく **composite action** を `actions/checkout` で `${{ github.repository_owner }}/android-tools` から取得して使う。呼び出し側にアカウント名(個人名)を書かずに済むため
-- 外部ライブラリなし: E2E は Python 標準ライブラリ + adb + uiautomator dump。ビルドは公式の setup-java / setup-gradle のみ
-- 実行タイミング: E2E は手動ボタンか、コミットメッセージに `[e2e]`(AI セッションは Actions API が 403 のため)
-- 端末: Android 17(API 37)→ ADR-0002 で Android 16 に変更。KVM 必須(仮想化なしのエミュレーターは使わない — オーナー指示)
-- 結果: プレリリース `e2e-report` に report.md と画像(AI は Releases API で読める)
-- 影響: android-tools の `main` を壊すと全アプリが止まる。変更後は launcher で確認する
+## 2026-11-16 GitHub Actionsのリソース節約
+- E2E/エミュレーターの実行・仕組み・手順書は全面撤去し、Git履歴以外には残さない。
+- 既存アプリは現在の署名鍵を変更せず、mainのアプリ修正で署名済み正式APKだけを公開する。
+- 新規アプリもE2Eテンプレートを持たず、署名・版数・APK検証の最小構成とする。
 
-## ADR-0002 E2E の端末を Android 16(API 36)にする(2026-10-28)
-- Android 17(API 37)のイメージは、エミュレーター 37.2 では screencap と surfaceflinger が `Assertion failed: !rcEnc->featureInfo()->hasReadColorBufferDma` で異常終了する。swiftshader_indirect / swangle_indirect / guest のどれでも同じ(機能を無効にするフラグも存在しない)
-- オーナー判断: Android 16 に変更(選択肢: 17 を試してだめなら 16/16 に変更/17 で粘る)
-- 新しいエミュレーターで直ったら `system-image` を戻す
-
-## ADR-0003 全アプリのウィジェットと書体を統一（2026-11-03）
-ユーザーが既存・将来の全アプリに、透明背景・システムのライト=黒文字／ダーク=縁取り付き白文字・Pixel標準フォントを指定。正本をWIDGET_STYLE.mdに置き、各アプリから参照する。今回の変更は仕様文書のみでビルド/E2Eのactionインターフェイスには変更なし。
+## 2026-11-03 全アプリのウィジェットと書体
+ウィジェットは透明背景・システムのライト=黒文字／ダーク=縁取り付き白文字・Pixel標準フォントを共通とする。正本はWIDGET_STYLE.md。

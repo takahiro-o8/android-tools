@@ -20,8 +20,8 @@
 - `templates/workflows/build.yml`：新規アプリ向けの共通Action呼び出しテンプレート。各アプリで**既存の鍵を初回だけSecretsに登録**する。
 - `docs/BUILD.md`：現在のビルド・署名・配布の設定手順。
 - `scripts/bootstrap-signing.sh`：新規アプリで固定署名鍵を初回だけ自動生成する。個別の強いパスワードSecret1つが必要。
-- `actions/e2e/`、`e2e/`：過去の調査用エミュレーター補助。通常のワークフローは呼び出さない。
-- `docs/E2E.md`、`docs/DECISIONS.md`、`docs/DEVLOG.md`：過去の実装・判断の記録であり、現在の正本ではない。
+- E2E用のAction・テスト・手順書は完全撤去済み。今後も作成しない。過去のE2E履歴はGit履歴でのみ参照する。
+- `docs/DECISIONS.md`：現行方針に関する判断の記録。
 
 ## アプリ側の構成
 各アプリの`AGENTS.md`/`CLAUDE.md`は本共通ルールへの参照とアプリ固有の制約だけにし、READMEはそのアプリの使い方を記す。アプリID・既存の署名鍵は共通化しない。
