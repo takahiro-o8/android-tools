@@ -10,7 +10,7 @@ test -n "${KEYSTORE_PASSWORD:-}" || {
   echo "::error::Production signing password is required"; exit 1;
 }
 ks="${RUNNER_TEMP}/production-keystore"
-trap 'rm -f "$ks" keystore.properties "$RUNNER_TEMP/signing.der"' EXIT
+trap 'rm -f "$ks" keystore.properties "$RUNNER_TEMP/signing.der"; rm -rf "$RUNNER_TEMP/release-signer-reference"' EXIT
 if [ -n "${KEYSTORE_FILE_PATH:-}" ]; then
   test -s "$KEYSTORE_FILE_PATH" || { echo "::error::Pinned signing keystore is missing"; exit 1; }
   cp "$KEYSTORE_FILE_PATH" "$ks"
@@ -31,6 +31,30 @@ if [ -n "${EXPECTED_CERT_FILE:-}" ]; then
 fi
 if [ -n "${EXPECTED_CERT:-}" ] && [ "${approved,,}" != "${EXPECTED_CERT,,}" ]; then
   echo "::error::Certificate differs from approved signing identity"; exit 1
+fi
+# Legacy apps without a pinned fingerprint must match the certificate embedded
+# in their most recent *published APK*, not merely the configured secret.
+# Once pinned, this one-time historical APK download is no longer needed.
+if [ -z "${EXPECTED_CERT:-}" ]; then
+  prior_tag="$(gh api "repos/$GH_REPO/releases?per_page=100" --jq '[.[] | select(.draft == false and .prerelease == false) | select(any(.assets[]?; .name | ascii_downcase | endswith(".apk")))] | first | .tag_name // empty')"
+  if [ -z "$prior_tag" ]; then
+    echo "::error::No previous production APK or pinned signing certificate; refusing unverified signing identity."
+    exit 1
+  fi
+  previous_dir="$RUNNER_TEMP/release-signer-reference"
+  mkdir -p "$previous_dir"
+  gh release download "$prior_tag" --repo "$GH_REPO" --pattern '*.apk' --dir "$previous_dir"
+  mapfile -t previous_apks < <(find "$previous_dir" -maxdepth 1 -type f -iname '*.apk')
+  if [ "${#previous_apks[@]}" -ne 1 ]; then
+    echo "::error::Expected exactly one previous APK to verify signing lineage."
+    exit 1
+  fi
+  old_cert="$("$ANDROID_HOME/build-tools/37.0.0/apksigner" verify --print-certs "${previous_apks[0]}" | sed -n 's/^Signer #1 certificate SHA-256 digest: \([a-fA-F0-9]*\)$/\1/p' | head -1)"
+  if [ -z "$old_cert" ] || [ "${old_cert,,}" != "${approved,,}" ]; then
+    echo "::error::Configured signing key does not match the most recent published APK."
+    exit 1
+  fi
+  echo "::notice::Legacy release certificate verified against $prior_tag. Pin certificate SHA-256 in the app workflow: $approved"
 fi
 if [ "${SIGNING_MODE:-properties}" = env ]; then
   export AI_USAGE_KEYSTORE_FILE="$ks"
