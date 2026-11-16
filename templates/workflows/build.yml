@@ -39,6 +39,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           repository: ${{ github.repository_owner }}/android-tools
+          ref: 6d33f054c2c3539ff482a486b1599be2b690924a
           path: .android-tools
       - uses: actions/setup-java@v4
         if: ${{ github.event_name == 'workflow_dispatch' && inputs.initialize_new_key }}
