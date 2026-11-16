@@ -10,8 +10,21 @@ umask 077
 : "${SIGNING_APP_LABEL:?}"
 : "${GITHUB_REPOSITORY:?}"
 
-if [[ "${BOOTSTRAP_APPROVED:-}" != "true" || "${GITHUB_EVENT_NAME:-}" != "workflow_dispatch" || "${GITHUB_REF:-}" != "refs/heads/main" ]]; then
-  echo "::error::New signing identities can only be created with the explicit main-branch Run workflow checkbox." >&2
+# Explicit authorization is mandatory. A one-time approval marker permits
+# automating the FIRST replacement key after a failed unpublished bootstrap.
+approval_marker="${BOOTSTRAP_MARKER_FILE:-}"
+approved_dispatch=false
+approved_marker=false
+if [[ "${GITHUB_EVENT_NAME:-}" == "workflow_dispatch" && "${BOOTSTRAP_APPROVED:-}" == "true" ]]; then
+  approved_dispatch=true
+elif [[ "${GITHUB_EVENT_NAME:-}" == "push" && "${BOOTSTRAP_APPROVED:-}" == "true" &&
+        "$approval_marker" == "signing/bootstrap-once-approved" &&
+        -f "$approval_marker" ]]; then
+  approved_marker=true
+fi
+if [[ "${GITHUB_REF:-}" != "refs/heads/main" ||
+      ( "$approved_dispatch" != "true" && "$approved_marker" != "true" ) ]]; then
+  echo "::error::New signing identities require a one-time explicit main-branch authorization." >&2
   exit 1
 fi
 if [[ ${#APP_SIGNING_PASSWORD} -lt 32 ]]; then
@@ -54,6 +67,9 @@ git config user.name "github-actions[bot]"
 git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 git add -f -- "$SIGNING_FILE_PATH"
 git add -- "$SIGNING_CERT_PATH"
+if [[ "$approved_marker" == "true" ]]; then
+  git rm -- "$approval_marker"
+fi
 git commit -m "ci: initialize immutable Android signing identity once"
 git push origin HEAD:main
 echo "CI_SOURCE_SHA=$(git rev-parse HEAD)" >> "$GITHUB_ENV"
