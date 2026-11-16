@@ -50,8 +50,12 @@ if [ -z "${EXPECTED_CERT:-}" ]; then
     exit 1
   fi
   old_cert="$("$ANDROID_HOME/build-tools/37.0.0/apksigner" verify --print-certs "${previous_apks[0]}" | sed -n 's/^Signer #1 certificate SHA-256 digest: \([a-fA-F0-9]*\)$/\1/p' | head -1)"
-  if [ -z "$old_cert" ] || [ "${old_cert,,}" != "${approved,,}" ]; then
-    echo "::error::Configured signing key does not match the most recent published APK."
+  if [ -z "$old_cert" ]; then
+    echo "::error::Could not parse SHA-256 certificate fingerprint from the published APK. Do not infer a signing mismatch."
+    exit 1
+  fi
+  if [ "${old_cert,,}" != "${approved,,}" ]; then
+    echo "::error::Signing identity mismatch: published APK fingerprint=$old_cert; configured keystore fingerprint=$approved."
     exit 1
   fi
   echo "::notice::Legacy release certificate verified against $prior_tag. Pin certificate SHA-256 in the app workflow: $approved"
