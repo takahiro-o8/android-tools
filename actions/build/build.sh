@@ -13,6 +13,10 @@ trap 'rm -f "$ks" keystore.properties "$RUNNER_TEMP/signing.der"' EXIT
 if [ -n "${KEYSTORE_FILE_PATH:-}" ]; then
   test -s "$KEYSTORE_FILE_PATH" || { echo "::error::Pinned signing keystore is missing"; exit 1; }
   cp "$KEYSTORE_FILE_PATH" "$ks"
+  # Password-file mode is reserved for keys created by bootstrap-signing.sh.
+  # Match its Unicode-safe PBKDF2 derivation; existing Base64 keystores are untouched.
+  KEYSTORE_PASSWORD="$(python3 .android-tools/scripts/derive-signing-password.py KEYSTORE_PASSWORD)"
+  export KEYSTORE_PASSWORD
 else
   test -n "${KEYSTORE_BASE64:-}" || { echo "::error::Production signing key is missing"; exit 1; }
   printf '%s' "$KEYSTORE_BASE64" | base64 --decode > "$ks"

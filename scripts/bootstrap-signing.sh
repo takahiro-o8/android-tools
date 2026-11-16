@@ -18,6 +18,10 @@ if [[ ${#APP_SIGNING_PASSWORD} -lt 32 ]]; then
   echo "::error::Use a randomly generated signing password containing at least 32 characters." >&2
   exit 1
 fi
+# keytool PKCS12 requires ASCII: derive a deterministic high-entropy hex password
+# from any Unicode Actions Secret. Never log the derived password.
+APP_SIGNING_PASSWORD="$(python3 .android-tools/scripts/derive-signing-password.py APP_SIGNING_PASSWORD)"
+export APP_SIGNING_PASSWORD
 if [[ ! "$SIGNING_ALIAS" =~ ^[a-zA-Z][a-zA-Z0-9_-]{1,49}$ ||
       ! "$SIGNING_FILE_PATH" =~ ^signing/[A-Za-z0-9._-]+\.p12$ ||
       ! "$SIGNING_CERT_PATH" =~ ^signing/[A-Za-z0-9._-]+\.sha256$ ||
