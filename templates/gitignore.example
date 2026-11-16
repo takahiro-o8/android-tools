@@ -1,0 +1,20 @@
+# Baseline for new PRIVATE Android app repositories
+.gradle/
+.idea/
+local.properties
+**/build/
+keystore.properties
+*.jks
+*.keystore
+*.p12
+*.apk
+*.idsig
+.android/
+.android-home/
+.kotlin/
+__pycache__/
+*.pyc
+
+# Only this password-encrypted PKCS12 is permitted in the private Git repo.
+# NEVER add plaintext keys, passwords, or keystore.properties.
+!signing/app-release.p12

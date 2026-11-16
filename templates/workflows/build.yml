@@ -41,7 +41,7 @@ jobs:
           APP_SIGNING_PASSWORD: ${{ secrets.APP_SIGNING_PASSWORD }}
           BOOTSTRAP_APPROVED: 'true'
           SIGNING_ALIAS: APP_ALIAS
-          SIGNING_APP_LABEL: APP_NAME
+          SIGNING_APP_LABEL: APP_ALIAS
           SIGNING_FILE_PATH: signing/app-release.p12
           SIGNING_CERT_PATH: signing/app-release-cert.sha256
         run: bash .android-tools/scripts/bootstrap-signing.sh
