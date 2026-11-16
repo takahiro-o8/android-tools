@@ -7,6 +7,9 @@ inputs:
   module:
     description: Application Gradle module
     default: app
+  expected-application-id:
+    description: Exact immutable Android applicationId in the signed release APK
+    required: true
   key-alias:
     description: Fixed signing alias
     required: true
@@ -42,8 +45,9 @@ runs:
         EXISTING_KEY_FILE: ${{ inputs.keystore-file }}
         EXISTING_PASSWORD: ${{ inputs.keystore-password }}
         EXISTING_ALIAS: ${{ inputs.key-alias }}
+        EXPECTED_APP_ID: ${{ inputs.expected-application-id }}
       run: |
-        if [ -z "$EXISTING_PASSWORD" ] || [ -z "$EXISTING_ALIAS" ]; then
+        if [ -z "$EXISTING_PASSWORD" ] || [ -z "$EXISTING_ALIAS" ] || [ -z "$EXPECTED_APP_ID" ]; then
           echo "::error::Signing password or alias missing. Register the app's own signing secret."
           exit 1
         fi
@@ -78,6 +82,7 @@ runs:
         SIGNING_MODE: ${{ inputs.signing-mode }}
         EXPECTED_CERT: ${{ inputs.expected-certificate }}
         EXPECTED_CERT_FILE: ${{ inputs.expected-certificate-file }}
+        EXPECTED_APP_ID: ${{ inputs.expected-application-id }}
         GH_TOKEN: ${{ github.token }}
         GH_REPO: ${{ github.repository }}
       run: bash "${{ github.action_path }}/build.sh"
