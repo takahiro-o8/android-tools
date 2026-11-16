@@ -5,15 +5,25 @@ umask 077
 MODULE="${MODULE:-app}"
 APP_NAME="${APP_NAME:?}"
 KEY_ALIAS="${KEY_ALIAS:?}"
-test -n "${KEYSTORE_BASE64:-}" && test -n "${KEYSTORE_PASSWORD:-}" || {
-  echo "::error::Existing production key required"; exit 1;
+test -n "${KEYSTORE_PASSWORD:-}" || {
+  echo "::error::Production signing password is required"; exit 1;
 }
-ks="${RUNNER_TEMP}/production.jks"
+ks="${RUNNER_TEMP}/production-keystore"
 trap 'rm -f "$ks" keystore.properties "$RUNNER_TEMP/signing.der"' EXIT
-printf '%s' "$KEYSTORE_BASE64" | base64 --decode > "$ks"
-keytool -list -keystore "$ks" -storepass "$KEYSTORE_PASSWORD" -alias "$KEY_ALIAS" >/dev/null
-keytool -exportcert -keystore "$ks" -storepass "$KEYSTORE_PASSWORD" -alias "$KEY_ALIAS" -file "$RUNNER_TEMP/signing.der" >/dev/null
+if [ -n "${KEYSTORE_FILE_PATH:-}" ]; then
+  test -s "$KEYSTORE_FILE_PATH" || { echo "::error::Pinned signing keystore is missing"; exit 1; }
+  cp "$KEYSTORE_FILE_PATH" "$ks"
+else
+  test -n "${KEYSTORE_BASE64:-}" || { echo "::error::Production signing key is missing"; exit 1; }
+  printf '%s' "$KEYSTORE_BASE64" | base64 --decode > "$ks"
+fi
+keytool -list -keystore "$ks" -storepass:env KEYSTORE_PASSWORD -alias "$KEY_ALIAS" >/dev/null
+keytool -exportcert -keystore "$ks" -storepass:env KEYSTORE_PASSWORD -alias "$KEY_ALIAS" -file "$RUNNER_TEMP/signing.der" >/dev/null
 approved=$(sha256sum "$RUNNER_TEMP/signing.der" | cut -d' ' -f1)
+if [ -n "${EXPECTED_CERT_FILE:-}" ]; then
+  test -s "$EXPECTED_CERT_FILE" || { echo "::error::Pinned signing certificate digest is missing"; exit 1; }
+  EXPECTED_CERT=$(tr -d '[:space:]:' < "$EXPECTED_CERT_FILE")
+fi
 if [ -n "${EXPECTED_CERT:-}" ] && [ "${approved,,}" != "${EXPECTED_CERT,,}" ]; then
   echo "::error::Certificate differs from approved signing identity"; exit 1
 fi
@@ -59,15 +69,16 @@ tools="$ANDROID_HOME/build-tools/37.0.0"
 grep -Fqi "$approved" "$RUNNER_TEMP/apk-signature.txt" || { echo "::error::APK signing certificate mismatch"; exit 1; }
 details=$("$tools/aapt" dump badging "$apk" | head -1)
 case "$details" in *"versionCode='$CI_VERSION_CODE'"*"versionName='$CI_VERSION_NAME'"*) ;; *) echo "::error::APK version does not match CI version"; exit 1;; esac
+source_sha="${CI_SOURCE_SHA:-$GITHUB_SHA}"
 main_sha=$(git ls-remote origin refs/heads/main | cut -f1)
 if [ -z "$main_sha" ]; then
   echo "::error::Cannot verify the latest main commit"; exit 1
 fi
-if [ "$main_sha" != "$GITHUB_SHA" ]; then
+if [ "$main_sha" != "$source_sha" ]; then
   # Documentation-only follow-up commits must not prevent an already-built APK
   # from reaching production. Changes to code/workflows still supersede it.
   git fetch --no-tags --depth=1 origin main >/dev/null
-  changed=$(git diff --name-only --no-renames "$GITHUB_SHA" FETCH_HEAD) || {
+  changed=$(git diff --name-only --no-renames "$source_sha" FETCH_HEAD) || {
     echo "::error::Could not compare current main to this build"; exit 1;
   }
   if printf '%s\n' "$changed" | grep -Ev '(^$|\.md$)' >/dev/null; then
@@ -80,6 +91,6 @@ name="$APP_NAME-$CI_VERSION_NAME.apk"
 cp "$apk" "$name"
 tag="build-$GITHUB_RUN_NUMBER"
 if gh release view "$tag" >/dev/null 2>&1; then echo "::error::Release already exists"; exit 1; fi
-gh release create "$tag" "$name" --target "$GITHUB_SHA" --title "$APP_NAME $CI_VERSION_NAME" --notes "Signed production APK from $GITHUB_SHA" --latest
+gh release create "$tag" "$name" --target "$source_sha" --title "$APP_NAME $CI_VERSION_NAME" --notes "Signed production APK from $source_sha" --latest
 echo "Published https://github.com/$GH_REPO/releases/tag/$tag"
 python3 .android-tools/scripts/retain-apk-versions.py --keep 3 --apply --remove-aux
