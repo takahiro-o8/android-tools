@@ -49,7 +49,7 @@ if [ -z "${EXPECTED_CERT:-}" ]; then
     echo "::error::Expected exactly one previous APK to verify signing lineage."
     exit 1
   fi
-  old_cert="$("$ANDROID_HOME/build-tools/37.0.0/apksigner" verify --print-certs "${previous_apks[0]}" | sed -n 's/^Signer #1 certificate SHA-256 digest: \([a-fA-F0-9]*\)$/\1/p' | head -1)"
+  old_cert="$("$ANDROID_HOME/build-tools/37.0.0/apksigner" verify --print-certs "${previous_apks[0]}" | python3 -c 'import re,sys; text=sys.stdin.read(); lines=[x for x in text.splitlines() if "certificate" in x.lower() and "sha-256" in x.lower()]; m=next((re.search(r"(?<![0-9a-fA-F])[0-9a-fA-F]{64}(?![0-9a-fA-F])",x) for x in lines if re.search(r"(?<![0-9a-fA-F])[0-9a-fA-F]{64}(?![0-9a-fA-F])",x)),None); print(m.group(0) if m else "")')"
   if [ -z "$old_cert" ]; then
     echo "::error::Could not parse SHA-256 certificate fingerprint from the published APK. Do not infer a signing mismatch."
     exit 1
