@@ -1,12 +1,19 @@
-# Copy this file to an app's .github/workflows/build.yml and customize APP_* placeholders.
-# One push to main -> one verified, signed production APK Release. No dev/draft/diagnostic Releases.
-# Configure APP_KEYSTORE_BASE64 and APP_KEYSTORE_PASSWORD in THIS APP's GitHub Secrets once.
+# New PRIVATE Android app: copy this file to .github/workflows/build.yml.
+# Replace APP_NAME, APP_ALIAS and APP_SIGNING_PASSWORD with THIS APP's values.
+# Create exactly one app-specific 32+ character random signing-password Secret.
+# Run workflow with initialize_new_key checked ONCE; future main pushes publish signed APKs.
 name: Build APK
 on:
   push:
     branches: [main]
     paths-ignore: ['**.md', 'docs/**']
   workflow_dispatch:
+    inputs:
+      initialize_new_key:
+        description: 'ONE TIME ONLY: create app signing key for first install'
+        type: boolean
+        required: false
+        default: false
 permissions:
   contents: write
 concurrency:
@@ -22,12 +29,26 @@ jobs:
         with:
           repository: ${{ github.repository_owner }}/android-tools
           path: .android-tools
+      - uses: actions/setup-java@v4
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.initialize_new_key }}
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Initialize fixed signing key once
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.initialize_new_key }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          APP_SIGNING_PASSWORD: ${{ secrets.APP_SIGNING_PASSWORD }}
+          BOOTSTRAP_APPROVED: 'true'
+          SIGNING_ALIAS: APP_ALIAS
+          SIGNING_APP_LABEL: APP_NAME
+          SIGNING_FILE_PATH: signing/app-release.p12
+          SIGNING_CERT_PATH: signing/app-release-cert.sha256
+        run: bash .android-tools/scripts/bootstrap-signing.sh
       - uses: ./.android-tools/actions/build
         with:
           app-name: APP_NAME
-          key-alias: APP_KEY_ALIAS
-          keystore-base64: ${{ secrets.APP_KEYSTORE_BASE64 }}
-          keystore-password: ${{ secrets.APP_KEYSTORE_PASSWORD }}
-          key-password: ${{ secrets.APP_KEY_PASSWORD }}
-          # Set an existing app's previously approved certificate fingerprint:
-          # expected-certificate: 64_lowercase_hex_digits
+          key-alias: APP_ALIAS
+          keystore-file: signing/app-release.p12
+          keystore-password: ${{ secrets.APP_SIGNING_PASSWORD }}
+          expected-certificate-file: signing/app-release-cert.sha256
