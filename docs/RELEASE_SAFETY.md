@@ -5,7 +5,7 @@
 ## APKを発行するたびの最低限の確認
 1. **アプリID**：既存の`applicationId`を維持する。同一IDが他アプリと競合しないようにする。
 2. **署名**：過去に端末へインストールした正式APKと同じ秘密鍵をGitHub Secretsから使う。APKの署名証明書SHA-256を検証し、既知の証明書と比較する。エイリアス名の一致だけでは同じ鍵とみなさない。
-3. **versionCode**：共通`scripts/verify-release-lineage.py`で既存配布済みAPKの最大versionCodeより大きな整数であることを照合する。文字列のバージョン名やGitHubの公開日だけで増減を判断しない。同時実行時も公開直前に再検査し、公開を直列化する。
+3. **versionName / versionCode**：正式版名は`x.y.z`だけを許容し、3整数で全公開版より大きいことを確認する。旧`.bN`は履歴読取時のみ除去する。内部番号はGitHub実行番号ではなく公開済み最大値+1以上を採番。共通`scripts/verify-release-lineage.py`で既存配布済みAPKの最大versionCodeより大きな整数であることを照合する。文字列のバージョン名やGitHubの公開日だけで増減を判断しない。同時実行時も公開直前に再検査し、公開を直列化する。
 4. **APKの識別**：`expected-application-id`をビルドに渡し、署名済みAPKの実際の`applicationId`、`versionCode`、`versionName`、証明書を`aapt`や`apksigner`等で照合する。Gradleファイルの文字列だけを信用しない。
 5. **失敗時**：署名の欠落・不一致・バージョン逆行・ビルド失敗の場合は公開を中止する。既存の最終成功APKは残す。別鍵の作成、デバッグ署名APKの本番配布、既存Releaseの無検証差し替えは禁止。
 6. **配布**：正式ReleaseのAssetsにAPKをZIP化せず直接置き、Releaseに添付されたことを確認してからページへのリンクを報告する。非公開リポジトリではログインが必要。端末実機での上書き更新は、実際に行った場合だけ「確認済み」と書く。

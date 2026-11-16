@@ -3,7 +3,7 @@
 ## 運用
 `main`にコードをPush → `assembleRelease`のみ実行 → **既存固定鍵で署名** → APK証明書・versionCode・versionNameを確認 → 正式GitHub Releaseを作成 → 最新版＋過去2件以外のReleaseと旧補助Releaseを削除する。
 
-- 新しい版をリリースするのに、`VERSION_CODE`や`VERSION_NAME`を毎回手動で増やす必要はない。CIは`versionCode = 100000 + GITHUB_RUN_NUMBER`、`versionName = <基準の版名>.b<実行番号>`を設定する。
+- 新しい版をリリースするのに、`VERSION_CODE`や`VERSION_NAME`を毎回手動で増やす必要はない。正式versionNameは`x.y.z`のみ。公開済み最大版と基準値を数値で比較し、必要ならパッチを+1する。versionCodeは公開済み最大値+1以上の内部整数とし、どちらもGitHub実行番号を使用しない。[採番の詳細](VERSIONING.md)。
 - ビルド失敗、署名鍵欠落、証明書不一致、APK版数不一致では公開中止。手動承認・PR・単体テスト・lintを通常の必須条件にしない。E2Eの手順・実行・補助コードは今後一切作らない。
 - **古いビルドが新しいコードを上書きしない**よう判定。後続変更がMarkdownのみなら、その直前に作った同じソースのAPKを公開できる。
 - `dev`・診断`ci-logs`/`e2e-report`・下書きReleaseは作らない。調査はGitHub Actionsのログを見る。

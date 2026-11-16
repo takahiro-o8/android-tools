@@ -80,19 +80,16 @@ p = {"storeFile": os.environ["SIGNING_FILE"],
 Path("keystore.properties").write_text(''.join(k+'='+esc(v)+'\n' for k,v in p.items()))
 PY
 fi
-export CI_VERSION_CODE="$((100000 + GITHUB_RUN_NUMBER))"
+# Version selection uses verified published APK history, never GITHUB_RUN_NUMBER.
+version_file="$RUNNER_TEMP/next-apk-version.txt"
+python3 .android-tools/scripts/next-release-version.py \
+  --repo "$GH_REPO" --expected-package "$EXPECTED_APP_ID" \
+  --aapt "$ANDROID_HOME/build-tools/37.0.0/aapt" --module "$MODULE" > "$version_file"
+mapfile -t release_version < "$version_file"
+test "${#release_version[@]}" -eq 2 || { echo "::error::Invalid version selection output"; exit 1; }
+export CI_VERSION_CODE="${release_version[0]}"
+export CI_VERSION_NAME="${release_version[1]}"
 export AI_USAGE_VERSION_CODE="$CI_VERSION_CODE"
-export CI_VERSION_NAME
-CI_VERSION_NAME=$(python3 - <<'PY'
-from pathlib import Path
-import re, os
-f = Path("version.properties")
-s = f.read_text() if f.exists() else Path(os.environ.get("MODULE", "app")+"/build.gradle.kts").read_text()
-m = re.search(r'(?:VERSION_NAME\s*=\s*|versionName\s*=\s*")(\d+\.\d+\.\d+)', s)
-if not m: raise SystemExit("No base VERSION_NAME")
-print(m.group(1) + ".b" + os.environ["GITHUB_RUN_NUMBER"])
-PY
-)
 echo "Assembling $APP_NAME $CI_VERSION_NAME ($CI_VERSION_CODE)"
 if [ -f gradlew ]; then bash ./gradlew ":$MODULE:assembleRelease" --no-daemon; else gradle ":$MODULE:assembleRelease" --no-daemon; fi
 apk=$(find "$MODULE/build/outputs/apk/release" -name '*.apk' -type f | head -1)
@@ -144,7 +141,7 @@ python3 .android-tools/scripts/verify-release-lineage.py \
   --repo "$GH_REPO"
 name="$APP_NAME-$CI_VERSION_NAME.apk"
 cp "$apk" "$name"
-tag="build-$GITHUB_RUN_NUMBER"
+tag="v$CI_VERSION_NAME"
 if gh release view "$tag" >/dev/null 2>&1; then echo "::error::Release already exists"; exit 1; fi
 gh release create "$tag" "$name" --target "$source_sha" --title "$APP_NAME $CI_VERSION_NAME" \
   --notes "$(printf 'Signed production APK from %s\nVerified-APK: package=%s; versionCode=%s; versionName=%s' "$source_sha" "$EXPECTED_APP_ID" "$CI_VERSION_CODE" "$CI_VERSION_NAME")" --latest

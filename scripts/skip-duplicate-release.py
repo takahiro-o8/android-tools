@@ -7,6 +7,7 @@ import json
 import re
 import subprocess
 import sys
+from release_versions import MAX_CODE, PROVEN_RE, semantic
 
 
 def command(*args):
@@ -34,15 +35,28 @@ def main():
                       for a in r.get("assets", []))]
     if not formal:
         return 2
-    latest = max(formal, key=lambda r: (r.get("published_at") or r.get("created_at") or "",
-                                         r.get("id", 0)))
-    assets = [a for a in latest["assets"] if a.get("name", "").lower().endswith(".apk")]
-    if len(assets) != 1:
-        return 2
+    # The greatest verified Android versionCode identifies the newest update.
+    # Publication dates can be reordered (e.g. a delayed older job).
+    known = []
+    for release in formal:
+        assets = [a for a in release["assets"] if a.get("name", "").lower().endswith(".apk")]
+        metadata = list(PROVEN_RE.finditer(release.get("body") or ""))
+        if len(assets) != 1 or len(metadata) != 1:
+            return 2  # Normal build performs actual-APK fallback verification.
+        version = metadata[0]
+        if version.group(1) != args.expected_package:
+            raise ValueError("Published APK has another applicationId")
+        semantic(version.group(3), legacy=True)
+        code = int(version.group(2))
+        if not 1 <= code <= MAX_CODE:
+            raise ValueError("Invalid published Android versionCode")
+        known.append((code, release))
+    if len({item[0] for item in known}) != len(known):
+        return 2  # Ambiguous duplicate codes require full lineage verification.
+    latest = max(known, key=lambda item: item[0])[1]
     body = latest.get("body") or ""
     source = re.search(r"(?m)^Signed production APK from ([0-9a-fA-F]{40})$", body)
-    package = re.search(r"(?m)^Verified-APK: package=([A-Za-z0-9_.]+); versionCode=([0-9]+); versionName=[^\r\n]+$", body)
-    if not source or not package or package.group(1) != args.expected_package:
+    if not source:
         return 2
     previous_sha = source.group(1).lower()
     current_sha = args.source_sha.lower()

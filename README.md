@@ -8,6 +8,7 @@
 ## 現在の正本
 - [AGENTS.md](AGENTS.md)：すべてのAI向け作業ルール
 - [docs/APP_BUILD_POLICY.md](docs/APP_BUILD_POLICY.md)：個人用・即時本番・Kotlin・SDK・3世代保持
+- [docs/VERSIONING.md](docs/VERSIONING.md)：数字3要素の版名・自動パッチ更新・ビルド番号を使わない採番
 - [docs/RELEASE_SAFETY.md](docs/RELEASE_SAFETY.md)：署名証明書・アプリID・versionCode・APK公開前の安全確認
 - [docs/SIGNING_BROWSER.md](docs/SIGNING_BROWSER.md)：GitHub画面から署名設定と既存Secretsを確認する方法
 - [docs/MATERIAL_DESIGN.md](docs/MATERIAL_DESIGN.md)：全アプリ共通のMaterial 3
@@ -21,7 +22,7 @@
 - `docs/BUILD.md`：現在のビルド・署名・配布の設定手順。
 - `scripts/generate-new-app-signing-txt.py`：AIが新規アプリの秘密情報を生成し、ユーザー向けコピー可能なTXTを出力する（Gitには登録しない）。
 - `scripts/bootstrap-signing.sh`：AI生成パスワードをユーザーがSecretへ登録後、新規アプリの固定署名鍵を初回だけ生成する。
-- `scripts/verify-release-lineage.py`：APK実体のアプリIDと過去の正式APKとのversionCodeの厳格な比較を行う。
+- `scripts/verify-release-lineage.py`：APK実体のアプリIDと過去の正式APKとのversionCode・数値版名の厳格な比較を行う。
 - E2E用のAction・テスト・手順書は完全撤去済み。今後も作成しない。過去のE2E履歴はGit履歴でのみ参照する。
 - `docs/DECISIONS.md`：現行方針に関する判断の記録。
 
