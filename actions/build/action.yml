@@ -11,8 +11,12 @@ inputs:
     description: Fixed signing alias
     required: true
   keystore-base64:
-    description: Existing production signing key
-    required: true
+    description: Existing production signing key, encoded as Base64
+    required: false
+    default: ''
+  keystore-file:
+    description: Repository-local, password-protected PKCS12/JKS signing file (alternative to Base64)
+    default: ''
   keystore-password:
     description: Keystore password
     required: true
@@ -22,21 +26,34 @@ inputs:
   expected-certificate:
     description: Optional SHA-256 fingerprint of installed signing certificate
     default: ''
+  expected-certificate-file:
+    description: Optional path to pinned SHA-256 certificate digest
+    default: ''
   signing-mode:
     description: properties or env
     default: properties
 runs:
   using: composite
   steps:
-    - name: Validate existing signing secrets before provisioning Android
+    - name: Validate signing configuration before provisioning Android
       shell: bash
       env:
         EXISTING_KEY: ${{ inputs.keystore-base64 }}
+        EXISTING_KEY_FILE: ${{ inputs.keystore-file }}
         EXISTING_PASSWORD: ${{ inputs.keystore-password }}
         EXISTING_ALIAS: ${{ inputs.key-alias }}
       run: |
-        if [ -z "$EXISTING_KEY" ] || [ -z "$EXISTING_PASSWORD" ] || [ -z "$EXISTING_ALIAS" ]; then
-          echo "::error::Missing existing Android signing Secrets. Register the original keystore and password for this repository; do not create a replacement key."
+        if [ -z "$EXISTING_PASSWORD" ] || [ -z "$EXISTING_ALIAS" ]; then
+          echo "::error::Signing password or alias missing. Register the app's own signing secret."
+          exit 1
+        fi
+        if [ -n "$EXISTING_KEY_FILE" ]; then
+          if [ ! -s "$EXISTING_KEY_FILE" ]; then
+            echo "::error::The encrypted signing file is missing. For File, use Run workflow -> Initialize new signing key once."
+            exit 1
+          fi
+        elif [ -z "$EXISTING_KEY" ]; then
+          echo "::error::Existing Android signing keystore is missing. Reuse the established key, or explicitly bootstrap a new key if reinstall is approved."
           exit 1
         fi
     - uses: actions/setup-java@v4
@@ -55,10 +72,12 @@ runs:
         MODULE: ${{ inputs.module }}
         KEY_ALIAS: ${{ inputs.key-alias }}
         KEYSTORE_BASE64: ${{ inputs.keystore-base64 }}
+        KEYSTORE_FILE_PATH: ${{ inputs.keystore-file }}
         KEYSTORE_PASSWORD: ${{ inputs.keystore-password }}
         KEY_PASSWORD: ${{ inputs.key-password }}
         SIGNING_MODE: ${{ inputs.signing-mode }}
         EXPECTED_CERT: ${{ inputs.expected-certificate }}
+        EXPECTED_CERT_FILE: ${{ inputs.expected-certificate-file }}
         GH_TOKEN: ${{ github.token }}
         GH_REPO: ${{ github.repository }}
       run: bash "${{ github.action_path }}/build.sh"
