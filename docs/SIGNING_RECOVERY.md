@@ -29,3 +29,18 @@
 - **バックアップは手動実行のみ**。定期実行しない。E2E・エミュレーター・APKビルド・Android SDKのセットアップは行わない。
 - 既存5アプリの通常のActionsは、アプリソースとGradle・署名設定の変更でのみ起動する。
 - バックアップは各アプリの既存鍵を一時的に参照するが、鍵自体を変更・再発行しない。
+
+## リカバリー時の復号とSecretの復元を自動化（PCのみ）
+GitHub CLI（`gh auth login`済み）、Python 3、`age`が使えるPCなら、暗号化バックアップをダウンロード済みの状態で、次のコマンドで復旧対象を安全に確認できる：
+
+```sh
+python3 scripts/restore-signing-backup.py android-signing-backup.age --identity android-recovery-key.txt
+```
+
+実際にGitHub Secretsを上書き復元するときだけ`--apply`を追加する。**通常運用では実行しない。**
+
+```sh
+python3 scripts/restore-signing-backup.py android-signing-backup.age --identity android-recovery-key.txt --apply
+```
+
+ローカルに元の鍵ファイルが必要になった場合は`--export-keystore ./private/keystore.bin`を追加。秘密鍵はそのPCだけに書き出され、`git add`したり共有しないこと。`file`の固定鍵は`signing/file-release.p12`を維持すること。署名証明書・アプリIDを変更しない。
