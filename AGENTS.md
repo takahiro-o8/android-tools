@@ -21,6 +21,11 @@
 - GitHubアプリから使いやすいよう、APKをReleaseのAssetsへ**ZIPに入れず直接添付**。報告時にはAPKが添付された実在のReleaseページのリンクを示す。直接`/releases/download/`リンクやActionsのZIPを主な案内にしない。
 - 平文の秘密鍵・パスワード・トークン・メール内容・個人データをGit、ログ、チャットに記載しない。新規アプリは強いパスワードで暗号化したPKCS12だけを非公開Gitに保存する例外を認め、パスワードはGitHub Secretsで保持する。紛失時はユーザーが全アプリの再インストールを許容しているため、個別バックアップの作成は要求しない。
 
+## 新規アプリの初回Secret登録はAIが作成したTXTを渡す
+- ユーザーにパスワードの考案・鍵の生成・エンコードを求めない。新しいアプリのAIは`scripts/generate-new-app-signing-txt.py`でランダム48文字のASCII英数字パスワードと正しいGitHub Secret名を生成し、登録URL・手順とともに**コピー可能なTXTファイル**でユーザーへ納品する。**Gitへは登録しない**。
+- 共通テンプレートの新規アプリは、ユーザーがSecretsへ貼り付けるのはAI生成の1パスワードのみ。固定署名鍵はGitHub Actions初回実行時に自動生成する。既存アプリの鍵は一切変更しない。
+- 全アプリの`expected-application-id`を固有のアプリIDで指定し、APKの実体と既存公開版のversionCodeを確認できない場合は正式公開を停止する。タグ名やリリース日だけからversionCodeを推定しない。
+
 ## 実装・技術の共通仕様
 - 自作のAndroidアプリ・ヘルパー・自作テストをKotlinへ完全統一。残存する`.java`は次回改修時にKotlinへ変換して削除する（Javaラッパー残しは禁止）。第三者のライブラリや自動生成コードは除外。Gradleの記述はKotlin DSL。
 - 最新の**相互互換性のある正式安定版**のAndroid SDK、AGP、Gradle、Kotlin、JDK、ライブラリを採用する。ビルド検証をせず一斉置換して完了と主張しない。`minSdk`はPixel 8のAndroid 14（API 34）を基本下限とし、ユーザーの現行Pixel 8で使えることを優先する。

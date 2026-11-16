@@ -1,12 +1,23 @@
 # New PRIVATE Android app: copy this file to .github/workflows/build.yml.
-# Replace APP_NAME, APP_ALIAS and APP_SIGNING_PASSWORD with THIS APP's values.
-# Create exactly one app-specific 32+ character random signing-password Secret.
+# AI replaces APP_NAME, APP_ALIAS, APP_APPLICATION_ID, APP_SIGNING_PASSWORD.
+# AI generates the exact Secret value and delivers an owner-copyable TXT file (not Git).
 # Run workflow with initialize_new_key checked ONCE; future main pushes publish signed APKs.
 name: Build APK
 on:
   push:
     branches: [main]
-    paths-ignore: ['**.md', 'docs/**']
+    paths:
+      - 'app/src/main/**'
+      - 'app/build.gradle.kts'
+      - 'app/proguard-rules.pro'
+      - 'build.gradle.kts'
+      - 'settings.gradle.kts'
+      - 'gradle/**'
+      - 'gradle.properties'
+      - 'gradlew'
+      - 'version.properties'
+      - 'signing/**'
+      - '.github/workflows/build.yml'
   workflow_dispatch:
     inputs:
       initialize_new_key:
@@ -48,6 +59,7 @@ jobs:
       - uses: ./.android-tools/actions/build
         with:
           app-name: APP_NAME
+          expected-application-id: APP_APPLICATION_ID
           key-alias: APP_ALIAS
           keystore-file: signing/app-release.p12
           keystore-password: ${{ secrets.APP_SIGNING_PASSWORD }}

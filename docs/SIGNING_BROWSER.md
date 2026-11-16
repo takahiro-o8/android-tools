@@ -4,7 +4,7 @@
 
 1. 対象の**非公開**GitHubリポジトリを開き、**Settings → Secrets and variables → Actions**へ移動。
 2. 「New repository secret」を選ぶ。Secret名はそのアプリのworkflowに指定したもの（例：`file`は`FILE_SIGNING_PASSWORD`）。
-3. パスワード管理アプリなどで作成した**ランダム32文字以上**のパスワードをValueに貼り付ける。同じパスワードを他アプリに使い回さない。値はGitHub Secretsに登録されるため、通常のビルドで入力し直す必要はない。ユーザーは紛失時のアプリ再インストールを許容しており、個別バックアップは不要。鍵やパスワードをチャットに貼らない。
+3. **AIが新規生成して渡したTXT**のNameとValueを、そのままGitHub Secretへコピーする。**ユーザー自身がパスワードを考えたり鍵を作成したりする必要はない。** TXTはASCII英数字48文字のランダム値を含む。値はGitHub Secretsが保持するため通常ビルドで再入力不要。紛失時は再インストールを許容する。
 4. 対象リポジトリの **Actions → Build APK → Run workflow** で`initialize_new_key`を**初回だけ**選択し、mainで実行。
 5. ビルドが成功し、正式ReleaseにAPKがあることを確認したらインストールする。既存アプリの旧鍵と異なる場合、必要なアプリ内データ・設定の退避を検討してから旧版をアンインストールする。
 6. 以降は同じ鍵で自動更新し、Secretsの再登録は不要。新しい鍵を生成する操作は行わない。
@@ -21,3 +21,5 @@ Launcher・Limitless・G-widget・LinkAutoDLは**この初回生成操作を使�
 
 [共通ビルド手順](BUILD.md)・[安全な配布](RELEASE_SAFETY.md)。
 
+
+**AI開発者向け**：新規アプリのSecrets値は必ずAIが生成してユーザーへコピー可能なTXTを納品する。[作成スクリプト](../scripts/generate-new-app-signing-txt.py)。TXTの秘密情報をGitにコミットしたりログへ出力しない。

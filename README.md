@@ -19,7 +19,9 @@
 - `actions/build/`：**現行の本番専用ビルド処理**。既存鍵で署名して証明書・versionCodeを検証し、成功APKを正式Releaseとして公開・3世代保持する。欠落・不一致なら公開しない。
 - `templates/workflows/build.yml`：新規アプリ向けの共通Action呼び出しテンプレート。各アプリで**既存の鍵を初回だけSecretsに登録**する。
 - `docs/BUILD.md`：現在のビルド・署名・配布の設定手順。
-- `scripts/bootstrap-signing.sh`：新規アプリで固定署名鍵を初回だけ自動生成する。個別の強いパスワードSecret1つが必要。
+- `scripts/generate-new-app-signing-txt.py`：AIが新規アプリの秘密情報を生成し、ユーザー向けコピー可能なTXTを出力する（Gitには登録しない）。
+- `scripts/bootstrap-signing.sh`：AI生成パスワードをユーザーがSecretへ登録後、新規アプリの固定署名鍵を初回だけ生成する。
+- `scripts/verify-release-lineage.py`：APK実体のアプリIDと過去の正式APKとのversionCodeの厳格な比較を行う。
 - E2E用のAction・テスト・手順書は完全撤去済み。今後も作成しない。過去のE2E履歴はGit履歴でのみ参照する。
 - `docs/DECISIONS.md`：現行方針に関する判断の記録。
 
@@ -28,7 +30,7 @@
 
 ## 新規アプリの簡単な署名設定
 
-新規の非公開リポジトリには[build.ymlテンプレート](templates/workflows/build.yml)を使い、[初回設定](docs/SIGNING_BROWSER.md)で強いパスワードSecretを1つ登録する。初回のRun workflowだけ鍵を作成。次回以降は同じ鍵で自動的に正式APKを公開する。既存4アプリは現在の鍵を維持。
+新規の非公開リポジトリには[build.ymlテンプレート](templates/workflows/build.yml)を使い、[初回設定](docs/SIGNING_BROWSER.md)で**AIがTXTで渡した**パスワードSecretを1つ登録する。初回のRun workflowだけ鍵を作成。次回以降は同じ鍵で自動的に正式APKを公開する。既存4アプリは現在の鍵を維持。
 
 ## 署名鍵の運用
 
