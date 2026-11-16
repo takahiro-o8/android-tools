@@ -13,7 +13,7 @@
 この方式は**最初から新しく配布するアプリ**向け。既存4アプリの署名鍵は維持し、勝手に再生成しない。`file`はユーザーが旧版のアンインストールを了承したため例外的にこの方式へ移行する。
 
 1. **非公開GitHubリポジトリ**を使う。`templates/workflows/build.yml`をアプリの`.github/workflows/build.yml`にコピーし、`APP_NAME`（APK名）、`APP_ALIAS`（英数字の鍵名）、`APP_SIGNING_PASSWORD`（GitHub Secretの名前）を各アプリ固有の値に置き換える。`templates/version.properties`と`templates/gitignore.example`も参考にする。
-2. GitHub Settings → Secrets and variables → Actions に、パスワードマネージャー等で生成した**ランダム32文字以上の強いパスワード**を1項目登録し、本人が別途安全に保管する。鍵はSecretではなく、パスワード暗号化された`signing/app-release.p12`として非公開Gitに保管される。
+2. GitHub Settings → Secrets and variables → Actions に、**ランダム32文字以上の強いパスワード**を1項目登録する。個別パスワードを覚えたり永久保管したりする代わりに、[PC共通復旧方式](SIGNING_RECOVERY.md)で署名鍵とSecretを暗号化バックアップする。バックアップ取得までは登録したSecretを消去・変更しない。鍵はSecretではなく、パスワード暗号化された`signing/app-release.p12`として非公開Gitに保管される。
 3. Actions → Build APK → Run workflow で`initialize_new_key`に**初回のみ**チェック。共通`scripts/bootstrap-signing.sh`が鍵ファイルと公開証明書のSHA-256指紋を作り、Gitにコミット。以降は**鍵を生成しない**。
 4. 共通`actions/build`が同一鍵を使い、アプリID・バージョン・署名を検証して正式APKを公開する。以後mainへのコードPushだけで自動更新。鍵パスワードの再登録は不要。
 5. 鍵の`.p12`とパスワードを**GitHubとは別に安全にバックアップ**する。パスワードを忘れたりアクセスを失うと将来の上書き更新ができない。
