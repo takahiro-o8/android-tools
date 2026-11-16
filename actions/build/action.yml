@@ -60,17 +60,42 @@ runs:
           echo "::error::Existing Android signing keystore is missing. Reuse the established key, or explicitly bootstrap a new key if reinstall is approved."
           exit 1
         fi
+    - name: Skip superseded revisions before provisioning Android
+      id: preflight
+      shell: bash
+      run: |
+        set -euo pipefail
+        source_sha="${CI_SOURCE_SHA:-$GITHUB_SHA}"
+        main_sha="$(git ls-remote origin refs/heads/main | cut -f1)"
+        if [ -z "$main_sha" ]; then
+          echo "::error::Cannot determine current main revision"
+          exit 1
+        fi
+        if [ "$source_sha" != "$main_sha" ]; then
+          git fetch --no-tags --depth=1 origin main
+          changed="$(git diff --name-only --no-renames "$source_sha" FETCH_HEAD)"
+          if printf '%s\n' "$changed" | grep -Ev '(^$|\.md$)' >/dev/null; then
+            echo "build=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::Newer code/configuration commit superseded this build; Android setup skipped."
+            exit 0
+          fi
+        fi
+        echo "build=true" >> "$GITHUB_OUTPUT"
     - uses: actions/setup-java@v4
+      if: steps.preflight.outputs.build == 'true'
       with:
         distribution: temurin
         java-version: '21'
     - uses: android-actions/setup-android@v3
+      if: steps.preflight.outputs.build == 'true'
       with:
         packages: 'platform-tools platforms;android-37.0 build-tools;37.0.0'
     - uses: gradle/actions/setup-gradle@v4
+      if: steps.preflight.outputs.build == 'true'
       with:
         gradle-version: '9.9.1'
     - shell: bash
+      if: steps.preflight.outputs.build == 'true'
       env:
         APP_NAME: ${{ inputs.app-name }}
         MODULE: ${{ inputs.module }}
