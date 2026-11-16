@@ -8,14 +8,22 @@
 - **古いビルドが新しいコードを上書きしない**よう判定。後続変更がMarkdownのみなら、その直前に作った同じソースのAPKを公開できる。
 - `dev`・診断`ci-logs`/`e2e-report`・下書きReleaseは作らない。調査はGitHub Actionsのログを見る。
 
-## 新規アプリでの初回設定（1回だけ）
-1. `templates/workflows/build.yml`をアプリの`.github/workflows/build.yml`へコピーし、`APP_NAME`、`APP_KEY_ALIAS`、Secretsの`APP`という仮名を固有の名前に変更する。
-2. AndroidアプリのGradle設定（Kotlin DSL、共通の互換最新版SDK/AGP/Gradle/JDK）に、`version.properties`等を元にした通常のバージョンとCI環境変数による上書きを記述する：
+## 新規アプリの標準方式：Secretはパスワード1項目だけ
+
+この方式は**最初から新しく配布するアプリ**向け。既存4アプリの署名鍵は維持し、勝手に再生成しない。`file`はユーザーが旧版のアンインストールを了承したため例外的にこの方式へ移行する。
+
+1. **非公開GitHubリポジトリ**を使う。`templates/workflows/build.yml`をアプリの`.github/workflows/build.yml`にコピーし、`APP_NAME`、`APP_ALIAS`、`APP_SIGNING_PASSWORD`という仮名をそのアプリの名称・Secret名に置き換える。
+2. GitHub Settings → Secrets and variables → Actions に、パスワードマネージャー等で生成した**ランダム32文字以上の強いパスワード**を1項目登録し、本人が別途安全に保管する。鍵はSecretではなく、パスワード暗号化された`signing/app-release.p12`として非公開Gitに保管される。
+3. Actions → Build APK → Run workflow で`initialize_new_key`に**初回のみ**チェック。共通`scripts/bootstrap-signing.sh`が鍵ファイルと公開証明書のSHA-256指紋を作り、Gitにコミット。以降は**鍵を生成しない**。
+4. 共通`actions/build`が同一鍵を使い、アプリID・バージョン・署名を検証して正式APKを公開する。以後mainへのコードPushだけで自動更新。鍵パスワードの再登録は不要。
+5. 鍵の`.p12`とパスワードを**GitHubとは別に安全にバックアップ**する。パスワードを忘れたりアクセスを失うと将来の上書き更新ができない。
+
+Gradle設定では、固定`applicationId`、API 34以上を標準の`minSdk`にし、CIからバージョンを上書きできるようにする。
 
 ```kotlin
 defaultConfig {
-    applicationId = "com.example.yourapp" // 他アプリと重複不可。既存アプリでは変更禁止。
-    minSdk = 34 // Pixel 8を前提
+    applicationId = "com.example.yourapp" // 新規アプリ固有の値。既存アプリでは変更禁止。
+    minSdk = 34
     versionCode = providers.environmentVariable("CI_VERSION_CODE").orNull?.toInt()
         ?: versionProps.getProperty("VERSION_CODE").toInt()
     versionName = providers.environmentVariable("CI_VERSION_NAME").orNull
@@ -23,10 +31,12 @@ defaultConfig {
 }
 ```
 
-3. リリース署名にはルート`keystore.properties`の`storeFile`/`storePassword`/`keyAlias`/`keyPassword`を使う（`limitless`だけ既存の環境変数方式を継続）。これらの設定・鍵ファイルは`.gitignore`に追加し、Gitへ入れない。
-4. GitHubリポジトリの**Settings → Secrets and variables → Actions**に、その**アプリ固有の**鍵のBase64、ストアのパスワードを初回のみ登録。キーのパスワードが別ならそれも登録。詳しくは[署名ブラウザ設定](SIGNING_BROWSER.md)。
-5. 既存アプリの鍵・証明書・applicationIdを変更しない。証明書が既知のアプリは`expected-certificate`を設定し、正確なSHA-256を比較して更新互換性を守る。
-6. `main`にPushして[Actions](https://github.com/takahiro-o8/android-tools/actions)ではなく**当該アプリ側のActions**で実行とAPK公開を確認する。GitHub Secretsは初回登録以降、更新のたびに再設定しない。
+リリース署名はルート`keystore.properties`の`storeFile`/`storePassword`/`keyAlias`/`keyPassword`を参照し、`keystore.properties`はGitに含めない。
+
+**安全上の違い**：暗号化されたPKCS12をGitに保存するため、リポジトリを取得した攻撃者がオフラインでパスワードを総当たりする余地がある。非公開リポジトリ、十分強いランダムパスワード、アクセス制限、バックアップが必須。パスワード保護されたファイルも安全性がゼロリスクになるわけではない。
+
+## 既存4アプリの方式（変更しない）
+Launcher・Limitless・G-widget・LinkAutoDLは各アプリの従来の署名鍵をそのまま利用し、当該リポジトリのGitHub Secretsで設定する。`file`だけは元の鍵を紛失し、アンインストールを明示的に了承したため、新しい署名鍵へ一度移行する。**既存鍵を統一・再生成しない。**
 
 ## ライフサイクル
 正式リリース直後に、`scripts/retain-apk-versions.py --keep 3 --apply --remove-aux`で保存版数を管理する。コードのGit履歴と署名鍵は削除しない。署名鍵は本人管理の安全な場所にも必ずバックアップする。

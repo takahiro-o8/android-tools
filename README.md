@@ -19,8 +19,13 @@
 - `actions/build/`：**現行の本番専用ビルド処理**。既存鍵で署名して証明書・versionCodeを検証し、成功APKを正式Releaseとして公開・3世代保持する。欠落・不一致なら公開しない。
 - `templates/workflows/build.yml`：新規アプリ向けの共通Action呼び出しテンプレート。各アプリで**既存の鍵を初回だけSecretsに登録**する。
 - `docs/BUILD.md`：現在のビルド・署名・配布の設定手順。
+- `scripts/bootstrap-signing.sh`：新規アプリで固定署名鍵を初回だけ自動生成する。個別の強いパスワードSecret1つが必要。
 - `actions/e2e/`、`e2e/`：過去の調査用エミュレーター補助。通常のワークフローは呼び出さない。
 - `docs/E2E.md`、`docs/DECISIONS.md`、`docs/DEVLOG.md`：過去の実装・判断の記録であり、現在の正本ではない。
 
 ## アプリ側の構成
 各アプリの`AGENTS.md`/`CLAUDE.md`は本共通ルールへの参照とアプリ固有の制約だけにし、READMEはそのアプリの使い方を記す。アプリID・既存の署名鍵は共通化しない。
+
+## 新規アプリの簡単な署名設定
+
+新規の非公開リポジトリには[build.ymlテンプレート](templates/workflows/build.yml)を使い、[初回設定](docs/SIGNING_BROWSER.md)で強いパスワードSecretを1つ登録する。初回のRun workflowだけ鍵を作成。次回以降は同じ鍵で自動的に正式APKを公開する。既存4アプリは現在の鍵を維持。
