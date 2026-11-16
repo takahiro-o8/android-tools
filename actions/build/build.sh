@@ -5,6 +5,7 @@ umask 077
 MODULE="${MODULE:-app}"
 APP_NAME="${APP_NAME:?}"
 KEY_ALIAS="${KEY_ALIAS:?}"
+EXPECTED_APP_ID="${EXPECTED_APP_ID:?An expected Android applicationId is required for production releases}"
 test -n "${KEYSTORE_PASSWORD:-}" || {
   echo "::error::Production signing password is required"; exit 1;
 }
@@ -71,8 +72,9 @@ test -n "$apk" && test -s "$apk" || { echo "::error::Release APK not found"; exi
 tools="$ANDROID_HOME/build-tools/37.0.0"
 "$tools/apksigner" verify --print-certs "$apk" > "$RUNNER_TEMP/apk-signature.txt"
 grep -Fqi "$approved" "$RUNNER_TEMP/apk-signature.txt" || { echo "::error::APK signing certificate mismatch"; exit 1; }
-details=$("$tools/aapt" dump badging "$apk" | head -1)
-case "$details" in *"versionCode='$CI_VERSION_CODE'"*"versionName='$CI_VERSION_NAME'"*) ;; *) echo "::error::APK version does not match CI version"; exit 1;; esac
+# Verify the exact Android package name and CI version against the *actual APK*
+# after signing. The lineage tool also compares the numeric versionCode against
+# every retained published APK, downloading older assets only when needed.
 source_sha="${CI_SOURCE_SHA:-$GITHUB_SHA}"
 main_sha=$(git ls-remote origin refs/heads/main | cut -f1)
 if [ -z "$main_sha" ]; then
@@ -91,10 +93,20 @@ if [ "$main_sha" != "$source_sha" ]; then
   fi
   echo "::notice::Only Markdown changed on main; publishing the verified APK from $GITHUB_SHA."
 fi
+# Final release gate. Existing formal APKs must have the same applicationId
+# and strictly lower actual versionCodes. Legacy release APKs are inspected;
+# subsequent releases record verified metadata to minimize redundant downloads.
+python3 .android-tools/scripts/verify-release-lineage.py \
+  --candidate "$apk" --aapt "$tools/aapt" \
+  --expected-package "$EXPECTED_APP_ID" \
+  --expected-code "$CI_VERSION_CODE" \
+  --expected-name "$CI_VERSION_NAME" \
+  --repo "$GH_REPO"
 name="$APP_NAME-$CI_VERSION_NAME.apk"
 cp "$apk" "$name"
 tag="build-$GITHUB_RUN_NUMBER"
 if gh release view "$tag" >/dev/null 2>&1; then echo "::error::Release already exists"; exit 1; fi
-gh release create "$tag" "$name" --target "$source_sha" --title "$APP_NAME $CI_VERSION_NAME" --notes "Signed production APK from $source_sha" --latest
+gh release create "$tag" "$name" --target "$source_sha" --title "$APP_NAME $CI_VERSION_NAME" \
+  --notes "$(printf 'Signed production APK from %s\nVerified-APK: package=%s; versionCode=%s; versionName=%s' "$source_sha" "$EXPECTED_APP_ID" "$CI_VERSION_CODE" "$CI_VERSION_NAME")" --latest
 echo "Published https://github.com/$GH_REPO/releases/tag/$tag"
 python3 .android-tools/scripts/retain-apk-versions.py --keep 3 --apply --remove-aux
