@@ -14,6 +14,7 @@
 - [docs/MATERIAL_DESIGN.md](docs/MATERIAL_DESIGN.md)：全アプリ共通のMaterial 3
 - [docs/WIDGET_STYLE.md](docs/WIDGET_STYLE.md)：ウィジェット・Google Sansの仕様とランチャー例外
 - [docs/PRINCIPLES.md](docs/PRINCIPLES.md)：設定変更時の状態整合性と依存削減
+- [docs/LINE_MESSAGING.md](docs/LINE_MESSAGING.md)：LINE公式アカウント「AI通知Bot」の共通チャネル設定、将来のAndroidアプリ連携方針（機密情報なし）
 - [scripts/retain-apk-versions.py](scripts/retain-apk-versions.py)：直近3正式APKを残し旧Releaseを削除する共通スクリプト
 
 ## 実装ファイル
