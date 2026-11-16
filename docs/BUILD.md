@@ -43,3 +43,11 @@ Launcher・Limitless・G-widget・LinkAutoDLは各アプリの従来の署名鍵
 
 ## ライフサイクル
 正式リリース直後に、`scripts/retain-apk-versions.py --keep 3 --apply --remove-aux`で保存版数を管理する。コードのGit履歴と署名鍵は削除しない。署名鍵の追加バックアップは行わない。紛失時のみ再インストールを許容する。
+
+## 共通Actionの更新と証明書の継続性
+
+- 既存アプリの`.github/workflows/build.yml`は、共通`android-tools`を検証済みコミットSHAへ固定して取得する。共通リポジトリの`main`が進んでも既存アプリの挙動は勝手に変わらない。共通Actionを改修した場合は、対象アプリでSHAを明示的に更新し、実際の署名済みAPK公開結果を検証する。
+- 公開ジョブは`cancel-in-progress: false`で直列実行する。共通Actionの`preflight`がAndroid SDKセットアップ前にmainの新しいコード変更を検出し、古いビルドを早期終了する。公開直前にも同じ確認を行う。
+- `expected-certificate`または`expected-certificate-file`が未設定の既存アプリは、最新の正式ReleaseにあるAPKの実際の署名証明書SHA-256と、現在の固定鍵を比較してから本番ビルドを続行する。検証できない場合は公開しない。照合に成功したら、その証明書指紋をアプリ側ワークフローへ固定すると過去APKの再ダウンロードを省略できる。
+- この安全確認はアプリの再署名・鍵の再生成を意味しない。正しい既存鍵が得られなければ配布を停止する。
+- `File`は通常の正式APKビルド時の`lintVital`を省略する。アプリID・署名・versionCode・公開前チェックは省略しない。
