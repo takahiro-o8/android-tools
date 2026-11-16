@@ -63,6 +63,10 @@ runs:
     - name: Skip superseded revisions before provisioning Android
       id: preflight
       shell: bash
+      env:
+        GH_TOKEN: ${{ github.token }}
+        GH_REPO: ${{ github.repository }}
+        EXPECTED_APP_ID: ${{ inputs.expected-application-id }}
       run: |
         set -euo pipefail
         source_sha="${CI_SOURCE_SHA:-$GITHUB_SHA}"
@@ -79,6 +83,18 @@ runs:
             echo "::notice::Newer code/configuration commit superseded this build; Android setup skipped."
             exit 0
           fi
+        fi
+        set +e
+        python3 .android-tools/scripts/skip-duplicate-release.py \
+          --repo "$GH_REPO" --source-sha "$source_sha" --expected-package "$EXPECTED_APP_ID"
+        duplicate_status=$?
+        set -e
+        if [ "$duplicate_status" -eq 0 ]; then
+          echo "build=false" >> "$GITHUB_OUTPUT"
+          exit 0
+        elif [ "$duplicate_status" -ne 2 ]; then
+          echo "::error::Could not verify previous release; refusing to publish blindly."
+          exit 1
         fi
         echo "build=true" >> "$GITHUB_OUTPUT"
     - uses: actions/setup-java@v4

@@ -121,6 +121,18 @@ if [ "$main_sha" != "$source_sha" ]; then
   fi
   echo "::notice::Only Markdown changed on main; publishing the verified APK from $GITHUB_SHA."
 fi
+set +e
+python3 .android-tools/scripts/skip-duplicate-release.py \
+  --repo "$GH_REPO" --source-sha "$source_sha" --expected-package "$EXPECTED_APP_ID"
+duplicate_status=$?
+set -e
+if [ "$duplicate_status" -eq 0 ]; then
+  echo "::notice::Production release already covers this source; no second APK."
+  exit 0
+elif [ "$duplicate_status" -ne 2 ]; then
+  echo "::error::Cannot check duplicate release; stopping publication."
+  exit 1
+fi
 # Final release gate. Existing formal APKs must have the same applicationId
 # and strictly lower actual versionCodes. Legacy release APKs are inspected;
 # subsequent releases record verified metadata to minimize redundant downloads.

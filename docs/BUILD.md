@@ -51,3 +51,10 @@ Launcher・Limitless・G-widget・LinkAutoDLは各アプリの従来の署名鍵
 - `expected-certificate`または`expected-certificate-file`が未設定の既存アプリは、最新の正式ReleaseにあるAPKの実際の署名証明書SHA-256と、現在の固定鍵を比較してから本番ビルドを続行する。検証できない場合は公開しない。照合に成功したら、その証明書指紋をアプリ側ワークフローへ固定すると過去APKの再ダウンロードを省略できる。
 - この安全確認はアプリの再署名・鍵の再生成を意味しない。正しい既存鍵が得られなければ配布を停止する。
 - `File`は通常の正式APKビルド時の`lintVital`を省略する。アプリID・署名・versionCode・公開前チェックは省略しない。
+
+## 重複ビルドの防止
+
+- 新しいRunの開始前に、正式Releaseに記録された検証済みAPKのソースSHAと現在のSHAを照合し、同一ならAndroid SDKの準備とGradleビルドを省略する。
+- SHAが違っても、差分がMarkdownと旧 `dist/`・`validation/` 配下だけならAPKを再発行しない。ワークフロー、ビルド設定、ソース、署名ファイルなどの差分は省略対象外。
+- 比較対象となる正式ReleaseのアプリID・ソースSHAを検証できない場合は通常ビルドへ進む。GitHub APIの障害は失敗扱いとして公開停止する。
+- 公開直前にも同じ検査を繰り返す。既存の証明書・アプリID・versionCodeの安全確認は維持する。
