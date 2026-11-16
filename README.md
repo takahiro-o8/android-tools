@@ -29,3 +29,7 @@
 ## 新規アプリの簡単な署名設定
 
 新規の非公開リポジトリには[build.ymlテンプレート](templates/workflows/build.yml)を使い、[初回設定](docs/SIGNING_BROWSER.md)で強いパスワードSecretを1つ登録する。初回のRun workflowだけ鍵を作成。次回以降は同じ鍵で自動的に正式APKを公開する。既存4アプリは現在の鍵を維持。
+
+## 署名鍵の復旧（個別パスワードの記憶不要）
+
+[5アプリ共通・PCの復旧用鍵による暗号化バックアップ手順](docs/SIGNING_RECOVERY.md)。既存アプリの鍵は変更しない。バックアップ用Actionsは手動起動のみで、Androidビルド・E2Eを実行しない。復旧用秘密鍵ファイルのバックアップは必須。
