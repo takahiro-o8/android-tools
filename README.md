@@ -2,11 +2,16 @@
 
 **全Androidアプリ・全開発AIの共通基盤。** Claude、Codex、Cursor、Meta Muse Code、Grok Build、その他のAIに共通。特定のAIの専用リポジトリは不要。
 
+## 開発開始の恒久ルール
+
+全アプリ・全AIで、オーナーの明示的なGOが出るまで開発しません。不具合報告や改善要望、質問への回答だけでは開始せず、調査・議論・仕様提案までに留めます。ローカル編集も対象です。[GOの判定・停止・文書整備の範囲](docs/DEVELOPMENT_APPROVAL.md)。
+
 ## ファイルの実体
 ここにあるのはAPKそのものではなく、**テキストファイル**です。`.md`は開発ルール・設計資料、`.yml`はGitHub Actionsと共通Action、`.sh`はビルド・配布コマンド、`.py`はビルド後の整理や補助処理です。
 
 ## 現在の正本
 - [AGENTS.md](AGENTS.md)：すべてのAI向け作業ルール
+- [docs/DEVELOPMENT_APPROVAL.md](docs/DEVELOPMENT_APPROVAL.md)：明示的GOまで開発しない恒久ルール
 - [docs/APP_BUILD_POLICY.md](docs/APP_BUILD_POLICY.md)：個人用・即時本番・Kotlin・SDK・3世代保持
 - [docs/VERSIONING.md](docs/VERSIONING.md)：数字3要素の版名・自動パッチ更新・ビルド番号を使わない採番
 - [docs/RELEASE_SAFETY.md](docs/RELEASE_SAFETY.md)：署名証明書・アプリID・versionCode・APK公開前の安全確認
